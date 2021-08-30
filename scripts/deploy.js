@@ -1,10 +1,18 @@
 // deploy contracts for test
 async function main() {
+    const erc20Peg = await ethers.getContractFactory('ERC20Peg');
+    console.log('Deploying ERC20Peg contract...');
+    const peg = await erc20Peg.deploy();
+    await peg.deployed();
+    console.log('CENNZnet erc20peg deployed to:', peg.address);
+
     const Bridge = await ethers.getContractFactory('CENNZnetBridge');
     console.log('Deploying CENNZnet bridge contract...');
     const bridge = await Bridge.deploy();
     await bridge.deployed();
     console.log('CENNZnet bridge deployed to:', bridge.address);
+
+    console.log(await peg.setBridgeAddress(bridge.address));
 
     const TestToken = await ethers.getContractFactory('TestToken');
     console.log('Deploying TestToken contract...');
@@ -21,21 +29,21 @@ async function main() {
     // Make  deposit
     let depositAmount = 1423;
     let cennznetAddress = "0xacd6118e217e552ba801f7aa8a934ea6a300a5b394e7c3f42cd9d6dd9a457c10";
-    console.log(await bridge.activateDeposits());
-    console.log(await token.approve(bridge.address, depositAmount));
-    console.log(await bridge.deposit(token.address, depositAmount, cennznetAddress));
+    console.log(await peg.activateDeposits());
+    console.log(await token.approve(peg.address, depositAmount));
+    console.log(await peg.deposit(token.address, depositAmount, cennznetAddress));
 
     let depositAmount2 = 5644;
     // Alice
     let cennznetAddress2 = "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d";
-    console.log(await token2.approve(bridge.address, depositAmount2));
-    console.log(await bridge.deposit(token2.address, depositAmount2, cennznetAddress2));
+    console.log(await token2.approve(peg.address, depositAmount2));
+    console.log(await peg.deposit(token2.address, depositAmount2, cennznetAddress2));
 
     let depositAmount3 = 11644;
     // Bob
     let cennznetAddress3 = "0x8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48";
-    console.log(await token2.approve(bridge.address, depositAmount3));
-    console.log(await bridge.deposit(token2.address, depositAmount3, cennznetAddress3));
+    console.log(await token2.approve(peg.address, depositAmount3));
+    console.log(await peg.deposit(token2.address, depositAmount3, cennznetAddress3));
     // console.log("deposit txReceipt:", txReceipt);
     // console.log("deposit tx hash:", txReceipt.hash);
     // console.log("deposit tx data:", txReceipt.data);
