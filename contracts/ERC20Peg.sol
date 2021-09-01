@@ -18,7 +18,11 @@ contract ERC20Peg is Ownable {
     // whether the peg is accepting withdrawals
     bool public withdrawalsActive;
     // CENNZnet bridge contract address
-    address public bridge;
+    CENNZnetBridge public bridge;
+
+    constructor(address _bridge) {
+        bridge = CENNZnetBridge(_bridge);
+    }
 
     event Deposit(address indexed, address tokenType, uint256 amount, bytes32 cennznetAddress);
     event Withdraw(address indexed, address tokenType, uint256 amount);
@@ -27,6 +31,7 @@ contract ERC20Peg is Ownable {
     // the pegged version of the token will be claim-able on CENNZnet
     function deposit(address tokenType, uint256 amount, bytes32 cennznetAddress) external {
         require(depositsActive, "deposits paused");
+        require(amount > 0, "0 deposit");
 
         // CENNZ deposits will require a vote to activate
         if (address(tokenType) == 0x1122B6a0E00DCe0563082b6e2953f3A943855c1F) {
@@ -42,17 +47,13 @@ contract ERC20Peg is Ownable {
     // Requires signatures from a threshold of current CENNZnet validators
     // v,r,s are sparse arrays expected to align w public key in 'validators'
     // i.e. v[i], r[i], s[i] matches the i-th validator[i]
-    function withdraw(address tokenType, uint256 amount, CENNZnetEventProof memory proof) payable external {
+    function withdraw(address tokenType, uint256 amount, address recipient, CENNZnetEventProof memory proof) payable external {
         require(withdrawalsActive, "withdrawals paused");
-        bytes memory message = abi.encodePacked(tokenType, amount, msg.sender);
-        bridge.call(abi.encodeWithSignature("verifyMessage(bytes,CENNZnetEventProof)", message, proof));
-        require(IERC20(tokenType).transfer(msg.sender, amount), "withdraw failed");
+        bytes memory message = abi.encodePacked(tokenType, amount, recipient);
+        bridge.verifyMessage(message, proof);
+        require(IERC20(tokenType).transfer(recipient, amount), "withdraw failed");
 
-        emit Withdraw(msg.sender, tokenType, amount);
-    }
-
-    function setBridgeAddress(address newBridgeAddress) external onlyOwner {
-        bridge = newBridgeAddress;
+        emit Withdraw(recipient, tokenType, amount);
     }
 
     function activateCENNZDeposits() external onlyOwner {

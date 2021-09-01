@@ -8,7 +8,7 @@
     "deploy": "hardhat run --network localhost scripts/deploy.js",
     "deposit": "hardhat run --network localhost scripts/deposit.js",
     "startEthNode": "./scripts/startEthNode.sh",
-    "test": "env TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\", \"esModuleInterop\": true, \"resolveJsonModule\": true, \"types\": [\"@types/mocha\"] }' mocha -r ts-node/register 'test/**/*.ts'"
+    "test": "yarn build && env TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\", \"esModuleInterop\": true, \"resolveJsonModule\": true, \"types\": [\"@types/mocha\"] }' mocha -r ts-node/register 'test/**/*.ts'"
   },
   "repository": {
     "type": "git",
