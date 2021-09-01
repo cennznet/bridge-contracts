@@ -40,8 +40,8 @@ contract CENNZnetBridge is Ownable {
     event SetValidators(address[], uint reward);
 
     /// force set the given validator set
-    function forceSetValidators(address[] memory validators, uint32 validatorSetId) external onlyOwner {
-        validators[validatorSetId] = validators;
+    function forceSetValidators(address[] memory _validators, uint32 validatorSetId) external onlyOwner {
+        validators[validatorSetId] = _validators;
     }
 
     // Verify a message was authorised by CENNZnet validators.
