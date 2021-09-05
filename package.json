@@ -8,7 +8,7 @@
     "deploy": "hardhat run --network localhost scripts/deploy.js",
     "deposit": "hardhat run --network localhost scripts/deposit.js",
     "startEthNode": "./scripts/startEthNode.sh",
-    "test": "yarn build && env TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\", \"esModuleInterop\": true, \"resolveJsonModule\": true, \"types\": [\"@types/mocha\"] }' mocha -r ts-node/register 'test/**/*.ts'"
+    "test": "yarn build && env TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\", \"esModuleInterop\": true, \"resolveJsonModule\": true, \"types\": [\"@types/mocha\"] }' mocha -r ts-node/register 'test/**/*.test.ts'"
   },
   "repository": {
     "type": "git",
@@ -28,6 +28,7 @@
   "dependencies": {
     "@types/chai": "^4.2.19",
     "@types/mocha": "^8.2.2",
+    "elliptic": "^6.5.4",
     "ethereum-waffle": "^3.4.0"
   },
   "devDependencies": {

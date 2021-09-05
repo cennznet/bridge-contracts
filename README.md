@@ -12,20 +12,20 @@ add to UI/Api session
   "EthHash": "H256",
   "EventTypeId": "u32",
   "Erc20DepositEvent": {
-    "tokenType": "EthAddress",
+    "tokenAddress": "EthAddress",
     "amount": "U256",
-    "beneficiary": "Address"
+    "recipient": "Address"
   },
   "EventClaimResult": {
      _enum: {
-       Valid: null,
-       DataProviderErr: null,
-       TxStatusFailed: null,
-       UnexpectedContractAddress: null,
-       NoTxLogs: null,
-       NotEnoughConfirmations: null,
-       UnexpectedData: null,
-       Expired: null
+       "Valid": null,
+       "DataProviderErr": null,
+       "TxStatusFailed": null,
+       "UnexpectedContractAddress": null,
+       "NoTxLogs": null,
+       "NotEnoughConfirmations": null,
+       "UnexpectedData": null,
+       "Expired": null
      }
     },
   "NotarizationPayload": {

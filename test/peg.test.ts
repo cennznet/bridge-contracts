@@ -7,7 +7,7 @@ import TestToken from '../artifacts/contracts/TestToken.sol/TestToken.json';
 
 use(solidity);
 
-describe('CENNZnetBridge', () => {
+describe('Erc20Peg', () => {
   const [wallet, walletTo] = new MockProvider().getWallets();
   let bridge: Contract;
   let erc20Peg: Contract;
