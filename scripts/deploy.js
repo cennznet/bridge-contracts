@@ -1,10 +1,5 @@
 // deploy contracts for test
 async function main() {
-    const erc20Peg = await ethers.getContractFactory('ERC20Peg');
-    console.log('Deploying ERC20Peg contract...');
-    const peg = await erc20Peg.deploy();
-    await peg.deployed();
-    console.log('CENNZnet erc20peg deployed to:', peg.address);
 
     const Bridge = await ethers.getContractFactory('CENNZnetBridge');
     console.log('Deploying CENNZnet bridge contract...');
@@ -12,7 +7,11 @@ async function main() {
     await bridge.deployed();
     console.log('CENNZnet bridge deployed to:', bridge.address);
 
-    console.log(await peg.setBridgeAddress(bridge.address));
+    const erc20Peg = await ethers.getContractFactory('ERC20Peg');
+    console.log('Deploying ERC20Peg contract...');
+    const peg = await erc20Peg.deploy(bridge.address);
+    await peg.deployed();
+    console.log('CENNZnet erc20peg deployed to:', peg.address);
 
     const TestToken = await ethers.getContractFactory('TestToken');
     console.log('Deploying TestToken contract...');
@@ -44,12 +43,7 @@ async function main() {
     let cennznetAddress3 = "0x8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48";
     console.log(await token2.approve(peg.address, depositAmount3));
     console.log(await peg.deposit(token2.address, depositAmount3, cennznetAddress3));
-    // console.log("deposit txReceipt:", txReceipt);
-    // console.log("deposit tx hash:", txReceipt.hash);
-    // console.log("deposit tx data:", txReceipt.data);
-    // console.log("deposit tx status:", txReceipt.status);
-    //console.log(txReceipt.events?.filter((x) => {return x.event == "Deposit"}));
-    // console.log(await ethers.getDefaultProvider().getTransactionReceipt(txReceipt.hash));
+
 }
 
 main()
