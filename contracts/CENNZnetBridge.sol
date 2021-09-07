@@ -92,10 +92,10 @@ contract CENNZnetBridge is Ownable {
     function setValidators(
         address[] memory newValidators,
         CENNZnetEventProof memory proof
-    ) external {
-        require(proof.validatorSetId > activeValidatorSetId, "validator set id replayed");
+    ) external payable {
+        require(proof.validatorSetId > activeValidatorSetId || proof.validatorSetId == 0 , "validator set id replayed");
 
-        bytes memory message = abi.encodePacked(newValidators, proof.validatorSetId, proof.eventId);
+        bytes memory message = abi.encode(newValidators, proof.validatorSetId, proof.eventId);
         this.verifyMessage(message, proof);
 
         // update
