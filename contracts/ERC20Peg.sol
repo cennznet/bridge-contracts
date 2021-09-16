@@ -19,6 +19,8 @@ contract ERC20Peg is Ownable {
     bool public withdrawalsActive;
     // CENNZnet bridge contract address
     CENNZnetBridge public bridge;
+    // Reserved address for native Eth deposits/withdraw
+    address public ETH_RESERVED_TOKEN_ADDRESS = address(0);
 
     constructor(address _bridge) {
         bridge = CENNZnetBridge(_bridge);
@@ -27,23 +29,26 @@ contract ERC20Peg is Ownable {
     event Deposit(address indexed, address tokenType, uint256 amount, bytes32 cennznetAddress);
     event Withdraw(address indexed, address tokenType, uint256 amount);
 
-    // Deposit amount of tokenType
-    // the pegged version of the token will be claim-able on CENNZnet
-    function deposit(address tokenType, uint256 amount, bytes32 cennznetAddress) external {
+    // Deposit amount of tokenType the pegged version of the token will be claim-able on CENNZnet.
+    // tokenType '0' is reserved for native Eth
+    function deposit(address tokenType, uint256 amount, bytes32 cennznetAddress) payable external {
         require(depositsActive, "deposits paused");
-        require(amount > 0, "0 deposit");
 
-        // CENNZ deposits will require a vote to activate
-        if (address(tokenType) == 0x1122B6a0E00DCe0563082b6e2953f3A943855c1F) {
-            require(cennzDepositsActive, "cennz deposits paused");
+        if (tokenType == ETH_RESERVED_TOKEN_ADDRESS) {
+            require(msg.value == amount, "incorrect deposit amount");
+        } else {
+            // CENNZ deposits will require a vote to activate
+            if (tokenType == 0x1122B6a0E00DCe0563082b6e2953f3A943855c1F) {
+                require(cennzDepositsActive, "cennz deposits paused");
+            }
+            IERC20(tokenType).transferFrom(msg.sender, address(this), amount);
         }
-
-        require(IERC20(tokenType).transferFrom(msg.sender, address(this), amount), "deposit failed");
 
         emit Deposit(msg.sender, tokenType, amount, cennznetAddress);
     }
 
     // Withdraw tokens from this contract
+    // tokenType '0' is reserved for native Eth
     // Requires signatures from a threshold of current CENNZnet validators
     // v,r,s are sparse arrays expected to align w public key in 'validators'
     // i.e. v[i], r[i], s[i] matches the i-th validator[i]
@@ -51,7 +56,12 @@ contract ERC20Peg is Ownable {
         require(withdrawalsActive, "withdrawals paused");
         bytes memory message = abi.encode(tokenType, amount, recipient, proof.validatorSetId, proof.eventId);
         bridge.verifyMessage{ value: msg.value }(message, proof);
-        require(IERC20(tokenType).transfer(recipient, amount), "withdraw failed");
+
+        if (tokenType == ETH_RESERVED_TOKEN_ADDRESS) {
+            payable(msg.sender).transfer(amount);
+        } else {
+            IERC20(tokenType).transfer(recipient, amount);
+        }
 
         emit Withdraw(recipient, tokenType, amount);
     }

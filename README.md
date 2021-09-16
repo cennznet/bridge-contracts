@@ -1,11 +1,35 @@
 # bridge-contracts
-CENNZnet ethereum bridge.
+CENNZnet ethereum bridge contracts.
 
-# ERC20 Peg
-Manages a Generic Asset - ERC20 peg using the CENNZnet ethereum bridge.
+__CENNZnet Bridge__  
+Maintains the active and historic set of CENNZnet validator public keys / addresses
+Provides external `verifyMessage` to allow other contracts to prove messages were signed by CENNZnet validators
+
+__ERC20 Peg__  
+Manages a Generic Asset - ERC20 peg using the CENNZnet ethereum bridge.  
+Deposited ERC20 tokens are claimable on CENNZnet for GA equivalents.  
+Withdrawing GA equivalents requires a signed proof from CENNZnet validators.  
+
+## Ropsten
+- ETH_HTTP=https://ropsten.infura.io/v3/40b42862b7244346b51662be3d4fef34
+CENNZnetBridge - `0x75a2488b80D1a12cB0209cB1C40986863745Ee2f`
+ERC20Peg - `0xa3205266ebBd74298729e04a28b8Fa53B5319679`
+TestToken - `0x5b32EADdDC81E0Ec6c24ef761ECA813d3D2d8a3F`
+
+__test deposit__
+https://ropsten.etherscan.io/tx/0x6af54d23bf73ae4ac1144b14d3a0ce85a584172e5bd9e4392c33c2cccc40a21b
+```json
+ transaction hash	0x6af54d23bf73ae4ac1144b14d3a0ce85a584172e5bd9e4392c33c2cccc40a21b
+ from	0xa86e122EdbDcBA4bF24a2Abf89F5C230b37DF49d
+ to	ERC20Peg.deposit(address,uint256,bytes32) 0xa3205266ebBd74298729e04a28b8Fa53B5319679
+ gas	69608 gas
+ transaction cost	64808 gas
+ hash	0x6af54d23bf73ae4ac1144b14d3a0ce85a584172e5bd9e4392c33c2cccc40a21b
+ decoded input	{ "address tokenType": "0x5b32EADdDC81E0Ec6c24ef761ECA813d3D2d8a3F", "uint256 amount": { "_hex": "0x3039", "_isBigNumber": true }, "bytes32 cennznetAddress": "0xe44bde9fe2da3392863b4fb7bad4501b8fc1ac1f7c741489bc3c8b3642584546" }
+ logs	[ { "from": "0x5b32EADdDC81E0Ec6c24ef761ECA813d3D2d8a3F", "topic": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef", "event": "Transfer", "args": { "0": "0xa86e122EdbDcBA4bF24a2Abf89F5C230b37DF49d", "1": "0xa3205266ebBd74298729e04a28b8Fa53B5319679", "2": "12345", "from": "0xa86e122EdbDcBA4bF24a2Abf89F5C230b37DF49d", "to": "0xa3205266ebBd74298729e04a28b8Fa53B5319679", "value": "12345" } }, { "from": "0x5b32EADdDC81E0Ec6c24ef761ECA813d3D2d8a3F", "topic": "0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925", "event": "Approval", "args": { "0": "0xa86e122EdbDcBA4bF24a2Abf89F5C230b37DF49d", "1": "0xa3205266ebBd74298729e04a28b8Fa53B5319679", "2": "0", "owner": "0xa86e122EdbDcBA4bF24a2Abf89F5C230b37DF49d", "spender": "0xa3205266ebBd74298729e04a28b8Fa53B5319679", "value": "0" } }, { "from": "0xa3205266ebBd74298729e04a28b8Fa53B5319679", "data": "0x0000000000000000000000005b32eadddc81e0ec6c24ef761eca813d3d2d8a3f0000000000000000000000000000000000000000000000000000000000003039e44bde9fe2da3392863b4fb7bad4501b8fc1ac1f7c741489bc3c8b3642584546", "topics": [ "0x76bb911c362d5b1feb3058bc7dc9354703e4b6eb9c61cc845f73da880cf62f61", "0x000000000000000000000000a86e122edbdcba4bf24a2abf89f5c230b37df49d" ] } ]
 
 ## CENNZnet types
-add to UI/Api session
+Add to UI/Api session
 ```json
   "EventClaimId": "u64",
   "EthAddress": "H160",
@@ -35,13 +59,6 @@ add to UI/Api session
   },
   "SessionKeys5B": "(AccountId, AccountId, AccountId, AccountId, BeefyKey)",
   "Keys": "SessionKeys5B"  
-```
-
-## Structure
-```bash
-#  solidity contract
-contracts/
-
 ```
 
 ## Setup

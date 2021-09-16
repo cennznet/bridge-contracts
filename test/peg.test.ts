@@ -1,5 +1,5 @@
 import { expect, use } from 'chai';
-import { Contract } from 'ethers';
+import { Contract, ethers } from 'ethers';
 import { deployContract, MockProvider, solidity } from 'ethereum-waffle';
 import CENNZnetBridge from '../artifacts/contracts/CENNZnetBridge.sol/CENNZnetBridge.json';
 import ERC20Peg from '../artifacts/contracts/ERC20Peg.sol/ERC20Peg.json';
@@ -40,14 +40,12 @@ describe('Erc20Peg', () => {
     expect(!await erc20Peg.withdrawalsActive)
   });
 
-  it('deposit success', async () => {
+  it('erc20 deposit', async () => {
     let depositAmount = 7;
-    let cennznetAddress = "0xacd6118e217e552ba801f7aa8a934ea6a300a5b394e7c3f42cd9d6dd9a457c10";
+    let cennznetAddress = '0xacd6118e217e552ba801f7aa8a934ea6a300a5b394e7c3f42cd9d6dd9a457c10';
+    let userBalanceStart = await testToken.balanceOf(wallet.address);
     await erc20Peg.activateDeposits();
     await testToken.approve(erc20Peg.address, depositAmount);
-
-    // best-effort guess at block timestamp
-    let timestamp = Math.floor(new Date().getTime() / 1000);
 
     await expect(
       erc20Peg.deposit(testToken.address, depositAmount, cennznetAddress)
@@ -55,30 +53,56 @@ describe('Erc20Peg', () => {
 
     // Check peg contract has funds
     expect(await testToken.balanceOf(erc20Peg.address)).to.equal(depositAmount);
+    let userBalanceEnd = await testToken.balanceOf(wallet.address);
+    expect(userBalanceEnd).to.equal(userBalanceStart - depositAmount);
+  });
+
+  it('native eth deposit', async () => {
+    let depositAmount = 12345;
+    let cennznetAddress = '0xacd6118e217e552ba801f7aa8a934ea6a300a5b394e7c3f42cd9d6dd9a457c10';
+    await erc20Peg.activateDeposits();
+    let ethTokenAddress = await erc20Peg.ETH_RESERVED_TOKEN_ADDRESS();
+    expect(ethTokenAddress).to.equal('0x0000000000000000000000000000000000000000');
+
+    let userEthStart = await erc20Peg.provider.getBalance(wallet.address);
+
+    await expect(
+      erc20Peg.deposit(ethTokenAddress, depositAmount, cennznetAddress, { value: depositAmount })
+    ).to.emit(erc20Peg, 'Deposit').withArgs(wallet.address, ethTokenAddress, depositAmount, cennznetAddress);
+
+    // Check peg contract has eth
+    let pegEthBalance = await erc20Peg.provider.getBalance(erc20Peg.address);
+    expect(pegEthBalance).to.equal(depositAmount);
+    let userEthEnd = await erc20Peg.provider.getBalance(wallet.address);
+    // final balance is start - deposit amount - gas fees
+    expect(userEthEnd.toNumber() < (userEthStart.toNumber() - depositAmount));
   });
 
   it('deposit, peg inactive', async () => {
     await testToken.approve(erc20Peg.address, 7);
 
     await expect(
-      erc20Peg.deposit(testToken.address, 7, "0xacd6118e217e552ba801f7aa8a934ea6a300a5b394e7c3f42cd9d6dd9a457c10")
-    ).to.revertedWith('deposits paused');
+      erc20Peg.deposit(testToken.address, 7, '0xacd6118e217e552ba801f7aa8a934ea6a300a5b394e7c3f42cd9d6dd9a457c10')
+    ).to.be.revertedWith('deposits paused');
   });
 
-  it('deposit, no approval', async () => {
+  it('native eth deposit invalid amount', async () => {
+    let depositAmount = 7777;
+    let cennznetAddress = '0xacd6118e217e552ba801f7aa8a934ea6a300a5b394e7c3f42cd9d6dd9a457c10';
+    await erc20Peg.activateDeposits();
+    let ethTokenAddress = await erc20Peg.ETH_RESERVED_TOKEN_ADDRESS();
+
+    await expect(
+      erc20Peg.deposit(ethTokenAddress, depositAmount, cennznetAddress, { value: depositAmount - 1 })
+    ).to.be.revertedWith('incorrect deposit amount');
+  });
+
+  it('erc20 deposit, no approval', async () => {
     await erc20Peg.activateDeposits();
 
     await expect(
-      erc20Peg.deposit(testToken.address, 7, "0xacd6118e217e552ba801f7aa8a934ea6a300a5b394e7c3f42cd9d6dd9a457c10")
+      erc20Peg.deposit(testToken.address, 7, '0xacd6118e217e552ba801f7aa8a934ea6a300a5b394e7c3f42cd9d6dd9a457c10')
     ).to.be.reverted;
-  });
-
-  it('deposit, zero amount', async () => {
-    await erc20Peg.activateDeposits();
-
-    await expect(
-      erc20Peg.deposit(testToken.address, 0, "0xacd6118e217e552ba801f7aa8a934ea6a300a5b394e7c3f42cd9d6dd9a457c10")
-    ).to.revertedWith('0 deposit');
   });
 
 });

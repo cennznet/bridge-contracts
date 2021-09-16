@@ -108,7 +108,7 @@ describe('CENNZnetBridge', () => {
                     value: verificationFee,
                 }
             )
-        ).to.revertedWith('signature invalid');
+        ).to.be.revertedWith('signature invalid');
   })
 
   it('verifies message no consensus', async () => {
@@ -153,7 +153,7 @@ describe('CENNZnetBridge', () => {
                 value: verificationFee,
             }
         )
-    ).to.revertedWith('not enough signatures');
+    ).to.be.revertedWith('not enough signatures');
   });
 
 
@@ -195,7 +195,7 @@ describe('CENNZnetBridge', () => {
                 value: verificationFee,
             }
         )
-    ).to.revertedWith("eventId replayed");
+    ).to.be.revertedWith("eventId replayed");
   });
 
   it('verifyMessage no fee', async () => {
@@ -205,7 +205,7 @@ describe('CENNZnetBridge', () => {
             { eventId: 0, validatorSetId: 1, v: [], r: [], s: [] },
             { gasLimit: 100000 }
         )
-    ).to.revertedWith("must supply verification fee");
+    ).to.be.revertedWith("must supply verification fee");
   });
 
   it('verifyMessage from historic validator set', async () => {
