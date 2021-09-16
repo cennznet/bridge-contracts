@@ -4,7 +4,6 @@ import { deployContract, MockProvider, solidity } from 'ethereum-waffle';
 import CENNZnetBridge from '../artifacts/contracts/CENNZnetBridge.sol/CENNZnetBridge.json';
 import ERC20Peg from '../artifacts/contracts/ERC20Peg.sol/ERC20Peg.json';
 import TestToken from '../artifacts/contracts/TestToken.sol/TestToken.json';
-import { Provider } from '@ethersproject/abstract-provider';
 
 use(solidity);
 
@@ -84,7 +83,7 @@ describe('Erc20Peg', () => {
 
     await expect(
       erc20Peg.deposit(testToken.address, 7, '0xacd6118e217e552ba801f7aa8a934ea6a300a5b394e7c3f42cd9d6dd9a457c10')
-    ).to.revertedWith('deposits paused');
+    ).to.be.revertedWith('deposits paused');
   });
 
   it('native eth deposit invalid amount', async () => {
@@ -95,7 +94,7 @@ describe('Erc20Peg', () => {
 
     await expect(
       erc20Peg.deposit(ethTokenAddress, depositAmount, cennznetAddress, { value: depositAmount - 1 })
-    ).to.revertedWith('incorrect deposit amount');
+    ).to.be.revertedWith('incorrect deposit amount');
   });
 
   it('erc20 deposit, no approval', async () => {

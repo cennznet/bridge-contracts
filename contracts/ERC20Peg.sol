@@ -34,13 +34,14 @@ contract ERC20Peg is Ownable {
     function deposit(address tokenType, uint256 amount, bytes32 cennznetAddress) payable external {
         require(depositsActive, "deposits paused");
 
-        // CENNZ deposits will require a vote to activate
-        if (tokenType == 0x1122B6a0E00DCe0563082b6e2953f3A943855c1F) {
-            require(cennzDepositsActive, "cennz deposits paused");
-        } else if (tokenType == ETH_RESERVED_TOKEN_ADDRESS) {
+        if (tokenType == ETH_RESERVED_TOKEN_ADDRESS) {
             require(msg.value == amount, "incorrect deposit amount");
             emit Deposit(msg.sender, ETH_RESERVED_TOKEN_ADDRESS, amount, cennznetAddress);
         } else {
+            // CENNZ deposits will require a vote to activate
+            if (tokenType == 0x1122B6a0E00DCe0563082b6e2953f3A943855c1F) {
+                require(cennzDepositsActive, "cennz deposits paused");
+            }
             IERC20(tokenType).transferFrom(msg.sender, address(this), amount);
             emit Deposit(msg.sender, tokenType, amount, cennznetAddress);
         }
