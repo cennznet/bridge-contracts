@@ -21,8 +21,6 @@ async function main() {
     await peg.deployed();
     console.log('CENNZnet erc20peg deployed to:', peg.address);
 
-    /***************** Ethereum Setup starts here **********************/
-
     // Activate deposits
     console.log(await peg.activateDeposits());
     // Activate withdrawals
