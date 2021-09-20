@@ -9,6 +9,7 @@
     "eth_e2e": "hardhat run --network localhost scripts/ethEndToEndTest.js",
     "deposit": "hardhat run --network localhost scripts/deposit.js",
     "withdraw": "hardhat run --network localhost scripts/withdraw.js",
+    "setAssetMeta": "node scripts/setAssetMeta.js",
     "startEthNode": "./scripts/startEthNode.sh",
     "test": "yarn build && env TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\", \"esModuleInterop\": true, \"resolveJsonModule\": true, \"types\": [\"@types/mocha\"] }' mocha -r ts-node/register 'test/**/*.test.ts'"
   },
