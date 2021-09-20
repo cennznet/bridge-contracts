@@ -10,6 +10,7 @@
     "deposit": "hardhat run --network localhost scripts/deposit.js",
     "withdraw": "hardhat run --network localhost scripts/withdraw.js",
     "setAssetMeta": "node scripts/setAssetMeta.js",
+    "setAssetMetaViaJSON": "node scripts/setMetadataViaStorage.js",
     "startEthNode": "./scripts/startEthNode.sh",
     "test": "yarn build && env TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\", \"esModuleInterop\": true, \"resolveJsonModule\": true, \"types\": [\"@types/mocha\"] }' mocha -r ts-node/register 'test/**/*.test.ts'"
   },
@@ -40,6 +41,7 @@
     "@openzeppelin/contracts": "^4.3.2",
     "@types/node": "^16.7.13",
     "@cennznet/api": "^1.5.0-alpha.2",
+    "@cennznet/util": "^1.5.0-alpha.2",
     "chai": "^4.3.4",
     "ethers": "^5.4.6",
     "hardhat": "^2.4.3",
