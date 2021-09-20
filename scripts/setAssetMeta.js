@@ -49,10 +49,9 @@ async function main() {
         let listOfTokens = content['tokens'];
         let details = [];
         // Push Centrality tokens
-        /// TODO need to verify the decimals
         listOfTokens.push({address: '0xd4fffa07929b1901fdb30c1c67f80e1185d4210f', symbol: 'CERTI', decimals: 18});
         listOfTokens.push({address: '0xf293d23bf2cdc05411ca0eddd588eb1977e8dcd4', symbol: 'SYLO', decimals: 18});
-        listOfTokens.push({address: '0x1122b6a0e00dce0563082b6e2953f3a943855c1f', symbol: 'CENNZ', decimals: 5});
+        listOfTokens.push({address: '0x1122b6a0e00dce0563082b6e2953f3a943855c1f', symbol: 'CENNZ', decimals: 4});
         listOfTokens.push({address: '0x0000000000000000000000000000000000000000', symbol: 'ETH', decimals: 18});
         listOfTokens.map(({address, symbol, decimals}) => {
             const recTuple = api.registry.createType('(EthAddress, Vec<u8>, u8)', [address, symbol, decimals]);
