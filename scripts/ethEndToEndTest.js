@@ -81,7 +81,8 @@ async function main() {
     /********************* Set up complete *******************************************/
 
     /********** new Token Id that would be minted on deposition at CENNZnet **********/
-    const testTokenId = await api.query.genericAsset.nextAssetId();
+    const tokenExist = await api.query.erc20Peg.erc20ToAssetId(ethAddress);
+    const testTokenId = tokenExist.isSome ? tokenExist.unwrap() : await api.query.genericAsset.nextAssetId();
     const claim = {
         tokenAddress: ethAddress,
         amount: depositAmount,
@@ -92,13 +93,13 @@ async function main() {
 
     /***************** Make Deposit on CENNZnet **********************/
     let eventClaimId;
-    let nonce = await api.rpc.system.accountNextIndex(alice.address);
     await new Promise(async (resolve, reject) => {
-        await api.tx.erc20Peg.depositClaim(depositTxHash, claim).signAndSend(alice, {nonce}, async ({status, events}) => {
+        await api.tx.erc20Peg.depositClaim(depositTxHash, claim).signAndSend(alice, async ({status, events}) => {
             if (status.isInBlock) {
                 for (const {event: {method, section, data}} of events) {
                     console.log('\t', `: ${section}.${method}`, data.toString());
-                    if (section === 'erc20Peg' && method == 'Erc20Claim') {
+                    const [, claimer] = data;
+                    if (section === 'erc20Peg' && method == 'Erc20Claim' && claimer && claimer.toString() === alice.address) {
                         eventClaimId = data[0];
                         console.log('*******************************************');
                         console.log('Deposit claim on CENNZnet side started for claim Id', eventClaimId.toString());
@@ -135,10 +136,10 @@ async function main() {
         });
     });
     await new Promise(async (resolve, reject) => {
-        let nonce = await api.rpc.system.accountNextIndex(alice.address);
+        // let nonce = await api.rpc.system.accountNextIndex(alice.address);
         let amount = depositAmount;
         const ethBeneficiary = deployer.address;
-        await api.tx.erc20Peg.withdraw(testTokenId, amount, ethBeneficiary,).signAndSend(alice, {nonce}, async ({status, events}) => {
+        await api.tx.erc20Peg.withdraw(testTokenId, amount, ethBeneficiary,).signAndSend(alice, async ({status, events}) => {
             if (status.isInBlock) {
                 for (const {event: {method, section, data}} of events) {
                     if (section === 'erc20Peg' && method == 'Erc20Withdraw') {
