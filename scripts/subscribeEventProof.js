@@ -96,8 +96,7 @@ async function main (networkName, bridgeContractAddress) {
     // Get the bridge instance that was deployed
     const Bridge = await ethers.getContractFactory('CENNZnetBridge');
     logger.info('Connecting to CENNZnet bridge contract...');
-    const bridge = await Bridge.deploy();
-    // const bridge = await Bridge.attach(bridgeContractAddress);
+    const bridge = await Bridge.attach(bridgeContractAddress);
     await bridge.deployed();
     logger.info(`CENNZnet bridge deployed to: ${bridge.address}`);
     logger.info(`Executor: ${txExecutor.address}`);
