@@ -11,7 +11,6 @@ Deposited ERC20 tokens are claimable on CENNZnet for GA equivalents.
 Withdrawing GA equivalents requires a signed proof from CENNZnet validators.  
 
 ## Ropsten
-- ETH_HTTP=https://ropsten.infura.io/v3/40b42862b7244346b51662be3d4fef34
 CENNZnetBridge - `0x75a2488b80D1a12cB0209cB1C40986863745Ee2f`
 ERC20Peg - `0xa3205266ebBd74298729e04a28b8Fa53B5319679`
 TestToken - `0x5b32EADdDC81E0Ec6c24ef761ECA813d3D2d8a3F`
