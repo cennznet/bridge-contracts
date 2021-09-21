@@ -1,8 +1,5 @@
 require('@nomiclabs/hardhat-ethers');
-
-const ALCHEMY_API_KEY = process.env.apiKey;
-
-const ROPSTEN_PRIVATE_KEY = process.env.accountKey;
+require("dotenv").config();
 
 module.exports = {
   solidity: {
@@ -16,8 +13,12 @@ module.exports = {
   },
   networks: {
     ropsten: {
-      url: `https://eth-ropsten.alchemyapi.io/v2/${ALCHEMY_API_KEY}`,
-      accounts: [`0x${ROPSTEN_PRIVATE_KEY}`],
+      url: `https://eth-ropsten.alchemyapi.io/v2/${process.env.ROPSTEN_INFURA_API_KEY}`,
+      accounts: [`0x${process.env.ACCOUNT_KEY}`],
     },
+    mainnet: {
+      url: `https://eth-ropsten.alchemyapi.io/v2/${process.env.MAINNET_INFURA_API_KEY}`,
+      accounts: [`0x${process.env.ACCOUNT_KEY}`],
+    }
   },
 }

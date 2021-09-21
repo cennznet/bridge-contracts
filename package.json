@@ -13,7 +13,9 @@
     "setAssetMeta": "node scripts/setAssetMeta.js",
     "setAssetMetaViaJSON": "node scripts/setMetadataViaStorage.js",
     "startEthNode": "./scripts/startEthNode.sh",
-    "subscribeEventProof": "hardhat run --network ropsten scripts/subscribeEventProof.js",
+    "validatorRelayer_local": "hardhat run --network localhost scripts/subscribeEventProof.js",
+    "validatorRelayer_ropsten": "hardhat run --network ropsten scripts/subscribeEventProof.js",
+    "validatorRelayer_mainnet": "hardhat run --network mainnet scripts/subscribeEventProof.js",
     "test": "yarn build && env TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\", \"esModuleInterop\": true, \"resolveJsonModule\": true, \"types\": [\"@types/mocha\"] }' mocha -r ts-node/register 'test/**/*.test.ts'"
   },
   "repository": {
@@ -35,7 +37,10 @@
     "@types/chai": "^4.2.19",
     "@types/mocha": "^8.2.2",
     "elliptic": "^6.5.4",
-    "ethereum-waffle": "^3.4.0"
+    "ethereum-waffle": "^3.4.0",
+    "dotenv": "^8.2.0",
+    "nodemailer": "^6.6.3",
+    "winston": "^3.2.1"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.2",
