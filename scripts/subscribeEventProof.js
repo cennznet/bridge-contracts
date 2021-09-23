@@ -23,7 +23,7 @@ const mailOptions = {
 // Ignore if validator public key is 0x000..
 const IGNORE_KEY = '0x000000000000000000000000000000000000000000000000000000000000000000';
 
-async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, lastValidatorsSet) {
+async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, validatorSetIdFromBridge) {
     let eventProof = null;
     return new Promise(async (resolve, reject) => {
         try {
@@ -40,46 +40,46 @@ async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, lastValid
                 });
                 if (eventProof) {
                     // Check if proof is already submitted
-                    if (lastValidatorsSet && lastValidatorsSet.id === eventProof.validatorSetId.toString() && JSON.stringify(newValidators) === JSON.stringify(lastValidatorsSet.validators)){
+                    if (validatorSetIdFromBridge && validatorSetIdFromBridge.toString() === eventProof.validatorSetId.toString()){
                         logger.info(`Proof is already submitted..${eventProof}`);
                         return resolve();
                     }
-                        const {eventId, validatorSetId, signatures} = eventProof;
-                        let v = [], r = [], s = []; // signature params
-                        signatures.forEach(signature => {
-                            const hexifySignature = ethers.utils.hexlify(signature);
-                            const sig = ethers.utils.splitSignature(hexifySignature);
-                            v.push(sig.v);
-                            r.push(sig.r);
-                            s.push(sig.s);
-                        });
-                        const cennznetEventProof = {
-                                eventId,
-                                validatorSetId,
-                                v,
-                                r,
-                                s
-                        };
+                    const {eventId, validatorSetId, signatures} = eventProof;
+                    let v = [], r = [], s = []; // signature params
+                    signatures.forEach(signature => {
+                        const hexifySignature = ethers.utils.hexlify(signature);
+                        const sig = ethers.utils.splitSignature(hexifySignature);
+                        v.push(sig.v);
+                        r.push(sig.r);
+                        s.push(sig.s);
+                    });
+                    const cennznetEventProof = {
+                        eventId,
+                        validatorSetId,
+                        v,
+                        r,
+                        s
+                    };
 
-                        logger.info("Sending setValidators tx with the account:", txExecutor.address);
-                        const gasEstimated = await bridge.estimateGas.setValidators(newValidators, cennznetEventProof, {gasLimit: 500000});
-                        logger.info(await bridge.setValidators(newValidators, cennznetEventProof, {gasLimit: 500000}));
-                        const balance = await ethers.provider.getBalance(txExecutor.address);
-                        logger.info(`Balance is: ${balance}`);
-                        const gasPrice = await ethers.provider.getGasPrice();
-                        logger.info(`Gas price: ${gasPrice.toString()}`);
-                        const gasRequired = gasEstimated.mul(gasPrice);
-                        logger.info(`Gas required: ${gasRequired.toString()}`);
-                        if (balance.lt(gasRequired.mul(2))) {
-                            transporter.sendMail(mailOptions, function (error, info) {
-                                if (error) {
-                                    logger.info(error);
-                                } else {
-                                    logger.info('Email sent: ' + info.response);
-                                }
-                            });
-                        }
-                        return resolve();
+                    logger.info("Sending setValidators tx with the account:", txExecutor.address);
+                    const gasEstimated = await bridge.estimateGas.setValidators(newValidators, cennznetEventProof, {gasLimit: 500000});
+                    logger.info(await bridge.setValidators(newValidators, cennznetEventProof, {gasLimit: 500000}));
+                    const balance = await ethers.provider.getBalance(txExecutor.address);
+                    logger.info(`Balance is: ${balance}`);
+                    const gasPrice = await ethers.provider.getGasPrice();
+                    logger.info(`Gas price: ${gasPrice.toString()}`);
+                    const gasRequired = gasEstimated.mul(gasPrice);
+                    logger.info(`Gas required: ${gasRequired.toString()}`);
+                    if (balance.lt(gasRequired.mul(2))) {
+                        transporter.sendMail(mailOptions, function (error, info) {
+                            if (error) {
+                                logger.info(error);
+                            } else {
+                                logger.info('Email sent: ' + info.response);
+                            }
+                        });
+                    }
+                    return resolve();
                 }
             });
         } catch (e) {
@@ -88,29 +88,6 @@ async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, lastValid
         }
     })
 
-}
-
-function getValidatorAddedToBridge(bridge) {
-    let lastValidatorsSet = {};
-
-    const filter = {
-        address: bridge.address,
-        fromBlock: 0,
-        topics: [
-            ethers.utils.id("SetValidators(address[],uint256,uint32)")
-        ]
-    }
-
-    ethers.provider.getLogs(filter).then((result) => {
-        if (result.length > 0) {
-            const abiCoder = ethers.utils.defaultAbiCoder;
-            const decodedResponse = abiCoder.decode(['address[]', 'uint256', 'uint32'], result[result.length - 1].data);
-            lastValidatorsSet.validators = decodedResponse[0].map(validator => validator.toLowerCase());
-            lastValidatorsSet.id = decodedResponse[2].toString();
-            logger.info(`Previous Validator set in bridge is: ${lastValidatorsSet}`);
-        }
-    });
-    return lastValidatorsSet;
 }
 
 async function main (networkName, bridgeContractAddress) {
@@ -127,12 +104,13 @@ async function main (networkName, bridgeContractAddress) {
     logger.info(`CENNZnet bridge deployed to: ${bridge.address}`);
     logger.info(`Executor: ${txExecutor.address}`);
 
-    let lastValidatorsSet = getValidatorAddedToBridge(bridge);
+    const validatorSetIdFromBridge = await bridge.activeValidatorSetId();
+    logger.info(`Last validator set id:${validatorSetIdFromBridge}`);
 
     await api.rpc.chain
         .subscribeFinalizedHeads(async (head) => {
            const blockNumber = head.number.toNumber();
-            logger.info(`At blocknumber: ${blockNumber}`);
+           logger.info(`At blocknumber: ${blockNumber}`);
 
            const blockHash = head.hash.toString();
            const events = await api.query.system.events.at(blockHash);
@@ -140,7 +118,7 @@ async function main (networkName, bridgeContractAddress) {
                 const { section, method, data } = event;
                 if (section === 'ethBridge' && method === 'AuthoritySetChange') {
                     const eventIdFound = data.toHuman()[0];
-                    await getEventPoofAndSubmit(api, eventIdFound, bridge, txExecutor, lastValidatorsSet);
+                    await getEventPoofAndSubmit(api, eventIdFound, bridge, txExecutor, validatorSetIdFromBridge);
                 }
             })
         });
@@ -148,4 +126,4 @@ async function main (networkName, bridgeContractAddress) {
 
 const networkName = process.env.NETWORK;
 const bridgeContractAddress = process.env.BRIDGE_CONTRACT;
-main(networkName, bridgeContractAddress).catch((err) => logger.error(err));
+main(networkName, bridgeContractAddress).catch((err) => console.log(err));
