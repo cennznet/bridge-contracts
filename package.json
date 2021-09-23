@@ -13,9 +13,7 @@
     "setAssetMeta": "node scripts/setAssetMeta.js",
     "setAssetMetaViaJSON": "node scripts/setMetadataViaStorage.js",
     "startEthNode": "./scripts/startEthNode.sh",
-    "validatorRelayer_local": "hardhat run --network localhost scripts/subscribeEventProof.js",
-    "validatorRelayer_ropsten": "hardhat run --network ropsten scripts/subscribeEventProof.js",
-    "validatorRelayer_mainnet": "hardhat run --network mainnet scripts/subscribeEventProof.js",
+    "validatorRelayer": "hardhat run scripts/subscribeEventProof.js --network $1",
     "test": "yarn build && env TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\", \"esModuleInterop\": true, \"resolveJsonModule\": true, \"types\": [\"@types/mocha\"] }' mocha -r ts-node/register 'test/**/*.test.ts'"
   },
   "repository": {
