@@ -4,6 +4,7 @@ require("dotenv").config();
 const logger = require('./logger');
 const nodemailer = require('nodemailer');
 
+let txExecutor;
 // Send email when accounts eth balance is less than gas fees
 const transporter = nodemailer.createTransport({
     service: 'gmail',
@@ -17,7 +18,7 @@ const mailOptions = {
     from: process.env.supportEmail,
     to: process.env.supportEmail,
     subject: 'Please top up eth balance',
-    text: 'To keep the validator relayer running, topup the eth account'
+    text: `To keep the validator relayer running, topup the eth account ${txExecutor}`
 };
 
 // Ignore if validator public key is 0x000..
@@ -40,7 +41,8 @@ async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, validator
                 });
                 if (eventProof) {
                     // Check if proof is already submitted
-                    if (validatorSetIdFromBridge && validatorSetIdFromBridge.toString() === eventProof.validatorSetId.toString()){
+                    if ( lastValidatorsSet && lastValidatorsSet.id === eventProof.validatorSetId.toString() &&
+                        JSON.stringify(newValidators) === JSON.stringify(lastValidatorsSet.validators) ){
                         logger.info(`Proof is already submitted..${eventProof}`);
                         return resolve();
                     }
@@ -87,14 +89,38 @@ async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, validator
             return reject(e);
         }
     })
-
 }
+
+function getValidatorAddedToBridge(bridge) {
+    let lastValidatorsSet = {};
+
+    const filter = {
+        address: bridge.address,
+        fromBlock: 0,
+        topics: [
+            ethers.utils.id("SetValidators(address[],uint256,uint32)")
+        ]
+    }
+
+    ethers.provider.getLogs(filter).then((result) => {
+        if (result.length > 0) {
+            const abiCoder = ethers.utils.defaultAbiCoder;
+            const decodedResponse = abiCoder.decode(['address[]', 'uint256', 'uint32'], result[result.length - 1].data);
+            lastValidatorsSet.validators = decodedResponse[0].map(validator => validator.toLowerCase());
+            lastValidatorsSet.id = decodedResponse[2].toString();
+            logger.info(`Previous Validator set in bridge is: ${JSON.stringify(lastValidatorsSet)}`);
+        }
+    });
+    return lastValidatorsSet;
+}
+
 
 async function main (networkName, bridgeContractAddress) {
     networkName = networkName || 'local';
 
     const api = await Api.create({network: networkName});
-    const [txExecutor] = await ethers.getSigners();
+    logger.info(`Connect to cennznet network ${networkName}`);
+    [txExecutor] = await ethers.getSigners();
 
     // Get the bridge instance that was deployed
     const Bridge = await ethers.getContractFactory('CENNZnetBridge');
@@ -104,8 +130,7 @@ async function main (networkName, bridgeContractAddress) {
     logger.info(`CENNZnet bridge deployed to: ${bridge.address}`);
     logger.info(`Executor: ${txExecutor.address}`);
 
-    const validatorSetIdFromBridge = await bridge.activeValidatorSetId();
-    logger.info(`Last validator set id:${validatorSetIdFromBridge}`);
+    let lastValidatorsSet = getValidatorAddedToBridge(bridge);
 
     await api.rpc.chain
         .subscribeFinalizedHeads(async (head) => {
@@ -118,7 +143,7 @@ async function main (networkName, bridgeContractAddress) {
                 const { section, method, data } = event;
                 if (section === 'ethBridge' && method === 'AuthoritySetChange') {
                     const eventIdFound = data.toHuman()[0];
-                    await getEventPoofAndSubmit(api, eventIdFound, bridge, txExecutor, validatorSetIdFromBridge);
+                    await getEventPoofAndSubmit(api, eventIdFound, bridge, txExecutor, lastValidatorsSet);
                 }
             })
         });
