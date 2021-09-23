@@ -78,7 +78,7 @@ async function main() {
     /********************* Set up complete *******************************************/
 
     /********** new Token Id that would be minted on deposition at CENNZnet **********/
-    const tokenExist = await api.query.erc20Peg.erc20ToAssetId(ethAddress);
+    const tokenExist = await api.query.erc20Peg.erc20ToAssetId(token.address);
     const testTokenId = tokenExist.isSome ? tokenExist.unwrap() : await api.query.genericAsset.nextAssetId();
     const claim = {
         tokenAddress: token.address,

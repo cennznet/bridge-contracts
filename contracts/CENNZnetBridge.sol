@@ -37,7 +37,7 @@ contract CENNZnetBridge is Ownable {
     // Acceptance threshold in %
     uint public THRESHOLD = 61;
 
-    event SetValidators(address[], uint reward);
+    event SetValidators(address[], uint reward, uint32 validatorSetId);
 
     /// force set the active CENNZnet validator set
     function forceSetValidators(address[] memory _validators, uint32 validatorSetId) external onlyOwner {
@@ -107,6 +107,6 @@ contract CENNZnetBridge is Ownable {
         (bool sent, ) = msg.sender.call{value: reward}("");
         require(sent, "Failed to send Ether");
 
-        emit SetValidators(newValidators, reward);
+        emit SetValidators(newValidators, reward, proof.validatorSetId);
     }
 }
