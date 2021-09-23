@@ -6,12 +6,14 @@
   "scripts": {
     "build": "rm -rf artifacts & hardhat compile",
     "deploy": "hardhat run --network localhost scripts/deploy.js",
+    "erc20_e2e": "hardhat run --network localhost scripts/e2e.js",
     "eth_e2e": "hardhat run --network localhost scripts/ethEndToEndTest.js",
     "deposit": "hardhat run --network localhost scripts/deposit.js",
     "withdraw": "hardhat run --network localhost scripts/withdraw.js",
     "setAssetMeta": "node scripts/setAssetMeta.js",
     "setAssetMetaViaJSON": "node scripts/setMetadataViaStorage.js",
     "startEthNode": "./scripts/startEthNode.sh",
+    "validatorRelayer": "hardhat run scripts/subscribeEventProof.js --network $1",
     "test": "yarn build && env TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\", \"esModuleInterop\": true, \"resolveJsonModule\": true, \"types\": [\"@types/mocha\"] }' mocha -r ts-node/register 'test/**/*.test.ts'"
   },
   "repository": {
@@ -33,15 +35,18 @@
     "@types/chai": "^4.2.19",
     "@types/mocha": "^8.2.2",
     "elliptic": "^6.5.4",
-    "ethereum-waffle": "^3.4.0"
+    "ethereum-waffle": "^3.4.0",
+    "dotenv": "^8.2.0",
+    "nodemailer": "^6.6.3",
+    "winston": "^3.2.1"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.2",
     "@nomiclabs/hardhat-waffle": "^2.0.1",
     "@openzeppelin/contracts": "^4.3.2",
     "@types/node": "^16.7.13",
-    "@cennznet/api": "^1.5.0-alpha.2",
-    "@cennznet/util": "^1.5.0-alpha.2",
+    "@cennznet/api": "^1.5.0-alpha.3",
+    "@cennznet/util": "^1.5.0-alpha.3",
     "chai": "^4.3.4",
     "ethers": "^5.4.6",
     "hardhat": "^2.4.3",
