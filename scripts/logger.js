@@ -21,7 +21,10 @@ transport.on('rotate', function(oldFilename, newFilename) {
 const logger = winston.createLogger({
   format: winston.format.json(),
   transports: [
-    transport
+    transport,
+    new winston.transports.Console({
+      level: process.env.LOG_LEVEL || 'info',
+    })
   ]
 });
 

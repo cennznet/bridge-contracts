@@ -35,7 +35,6 @@
     "@types/chai": "^4.2.19",
     "@types/mocha": "^8.2.2",
     "node-libcurl": "^2.3.3",
-    "bunyan": "^1.8.15",
     "elliptic": "^6.5.4",
     "ethereum-waffle": "^3.4.0",
     "dotenv": "^8.2.0",
