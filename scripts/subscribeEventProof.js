@@ -2,39 +2,39 @@
 const { Api } = require('@cennznet/api');
 require("dotenv").config();
 const logger = require('./logger');
-const nodemailer = require('nodemailer');
-
-let txExecutor;
-// Send email when accounts eth balance is less than gas fees
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.supportEmail,
-        pass: process.env.pass
-    }
+const { curly } = require("node-libcurl");
+const bunyan = require('bunyan');
+const ringbuffer = new bunyan.RingBuffer({ limit: 100 });
+const log = bunyan.createLogger({
+    name: 'myapp',
+    streams: [
+        {
+            level: 'info',
+            stream: process.stdout
+        },
+        {
+            level:  'trace',
+            type:   'raw',
+            stream: ringbuffer
+        }
+    ],
 });
-
-const mailOptions = {
-    from: process.env.supportEmail,
-    to: process.env.supportEmail,
-    subject: 'Please top up eth balance',
-    text: `To keep the validator relayer running, topup the eth account ${txExecutor}`
-};
+let txExecutor;
 
 // Ignore if validator public key is 0x000..
 const IGNORE_KEY = '0x000000000000000000000000000000000000000000000000000000000000000000';
 
-async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, validatorSetIdFromBridge) {
+async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, lastValidatorsSet) {
     let eventProof = null;
     return new Promise(async (resolve, reject) => {
         try {
             await api.rpc.ethy.getEventProof(eventId, async (versionedEventProof) => {
                 logger.debug(`versionedEventProof:: ${versionedEventProof.toJSON()}`);
+                log.info(`versionedEventProof:: ${versionedEventProof.toJSON()}`);
                 eventProof = versionedEventProof ? versionedEventProof.toJSON().EventProof : null;
                 const notaryKeys = await api.query.ethBridge.notaryKeys();
                 const filteredNotaryKeys = notaryKeys.filter(notaryKey => notaryKey.toString() !== IGNORE_KEY);
                 const newValidators = filteredNotaryKeys.map((notaryKey) => {
-                    logger.debug('notary key:',notaryKey.toString());
                     let decompressedPk = ethers.utils.computePublicKey(notaryKey);
                     let h = ethers.utils.keccak256('0x' + decompressedPk.slice(4));
                     return '0x' + h.slice(26)
@@ -44,6 +44,7 @@ async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, validator
                     if ( lastValidatorsSet && lastValidatorsSet.id === eventProof.validatorSetId.toString() &&
                         JSON.stringify(newValidators) === JSON.stringify(lastValidatorsSet.validators) ){
                         logger.info(`Proof is already submitted..${eventProof}`);
+                        log.info(`Proof is already submitted..${eventProof}`);
                         return resolve();
                     }
                     const {eventId, validatorSetId, signatures} = eventProof;
@@ -64,28 +65,37 @@ async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, validator
                     };
 
                     logger.info("Sending setValidators tx with the account:", txExecutor.address);
+                    log.info("Sending setValidators tx with the account:", txExecutor.address);
                     const gasEstimated = await bridge.estimateGas.setValidators(newValidators, cennznetEventProof, {gasLimit: 500000});
                     logger.info(await bridge.setValidators(newValidators, cennznetEventProof, {gasLimit: 500000}));
                     const balance = await ethers.provider.getBalance(txExecutor.address);
                     logger.info(`Balance is: ${balance}`);
+                    log.info(`Balance is: ${balance}`);
                     const gasPrice = await ethers.provider.getGasPrice();
                     logger.info(`Gas price: ${gasPrice.toString()}`);
+                    log.info(`Gas price: ${gasPrice.toString()}`);
                     const gasRequired = gasEstimated.mul(gasPrice);
                     logger.info(`Gas required: ${gasRequired.toString()}`);
+                    log.info(`Gas required: ${gasRequired.toString()}`);
                     if (balance.lt(gasRequired.mul(2))) {
-                        transporter.sendMail(mailOptions, function (error, info) {
-                            if (error) {
-                                logger.info(error);
-                            } else {
-                                logger.info('Email sent: ' + info.response);
-                            }
+                        const { statusCode, data } = await curly.post(`https://hooks.slack.com/services/${process.env.SECRET}`, {
+                            postFields: JSON.stringify({
+                                "text": ` 🚨 To keep the validator relayer running, topup the eth account ${txExecutor.address} on CENNZnets ${process.env.NETWORK} chain`
+                            }),
+                            httpHeader: [
+                                'Content-Type: application/json',
+                                'Accept: application/json'
+                            ],
                         });
+                        logger.info(`Slack notification sent ${data} and status code ${statusCode}`);
+                        log.info(`Slack notification sent ${data} and status code ${statusCode}`);
                     }
                     return resolve();
                 }
             });
         } catch (e) {
             logger.error(e);
+            log.error(e);
             return reject(e);
         }
     })
@@ -109,6 +119,7 @@ function getValidatorAddedToBridge(bridge) {
             lastValidatorsSet.validators = decodedResponse[0].map(validator => validator.toLowerCase());
             lastValidatorsSet.id = decodedResponse[2].toString();
             logger.info(`Previous Validator set in bridge is: ${JSON.stringify(lastValidatorsSet)}`);
+            log.info(`Previous Validator set in bridge is: ${JSON.stringify(lastValidatorsSet)}`);
         }
     });
     return lastValidatorsSet;
@@ -125,17 +136,25 @@ async function main (networkName, bridgeContractAddress) {
     // Get the bridge instance that was deployed
     const Bridge = await ethers.getContractFactory('CENNZnetBridge');
     logger.info('Connecting to CENNZnet bridge contract...');
+    log.info('Connecting to CENNZnet bridge contract...');
     const bridge = await Bridge.attach(bridgeContractAddress);
     await bridge.deployed();
     logger.info(`CENNZnet bridge deployed to: ${bridge.address}`);
     logger.info(`Executor: ${txExecutor.address}`);
+    log.info(`CENNZnet bridge deployed to: ${bridge.address}`);
+    log.info(`Executor: ${txExecutor.address}`);
 
     let lastValidatorsSet = getValidatorAddedToBridge(bridge);
 
     await api.rpc.chain
         .subscribeFinalizedHeads(async (head) => {
            const blockNumber = head.number.toNumber();
+           const timeStamp = await api.query.timestamp.now();
+           const date = new Date(timeStamp.toJSON());
+           logger.info(`timestamp: ${date}`);
            logger.info(`At blocknumber: ${blockNumber}`);
+           log.info(`timestamp: ${date}`);
+           log.info(`At blocknumber: ${blockNumber}`);
 
            const blockHash = head.hash.toString();
            const events = await api.query.system.events.at(blockHash);
