@@ -121,9 +121,7 @@ async function main (networkName, bridgeContractAddress) {
     await api.rpc.chain
         .subscribeFinalizedHeads(async (head) => {
            const blockNumber = head.number.toNumber();
-           const timeStamp = await api.query.timestamp.now();
-           const date = new Date(timeStamp.toJSON());
-           logger.info(`timestamp: ${date}`);
+           logger.info(`timeStampInMs: ${Date.now()}`);
            logger.info(`At blocknumber: ${blockNumber}`);
 
            const blockHash = head.hash.toString();
