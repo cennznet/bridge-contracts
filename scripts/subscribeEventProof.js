@@ -2,29 +2,13 @@
 const { Api } = require('@cennznet/api');
 require("dotenv").config();
 const logger = require('./logger');
-const nodemailer = require('nodemailer');
-
+const { curly } = require("node-libcurl");
 let txExecutor;
-// Send email when accounts eth balance is less than gas fees
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.supportEmail,
-        pass: process.env.pass
-    }
-});
-
-const mailOptions = {
-    from: process.env.supportEmail,
-    to: process.env.supportEmail,
-    subject: 'Please top up eth balance',
-    text: `To keep the validator relayer running, topup the eth account ${txExecutor}`
-};
 
 // Ignore if validator public key is 0x000..
 const IGNORE_KEY = '0x000000000000000000000000000000000000000000000000000000000000000000';
 
-async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, validatorSetIdFromBridge) {
+async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, lastValidatorsSet) {
     let eventProof = null;
     return new Promise(async (resolve, reject) => {
         try {
@@ -34,7 +18,6 @@ async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, validator
                 const notaryKeys = await api.query.ethBridge.notaryKeys();
                 const filteredNotaryKeys = notaryKeys.filter(notaryKey => notaryKey.toString() !== IGNORE_KEY);
                 const newValidators = filteredNotaryKeys.map((notaryKey) => {
-                    logger.debug('notary key:',notaryKey.toString());
                     let decompressedPk = ethers.utils.computePublicKey(notaryKey);
                     let h = ethers.utils.keccak256('0x' + decompressedPk.slice(4));
                     return '0x' + h.slice(26)
@@ -73,13 +56,16 @@ async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, validator
                     const gasRequired = gasEstimated.mul(gasPrice);
                     logger.info(`Gas required: ${gasRequired.toString()}`);
                     if (balance.lt(gasRequired.mul(2))) {
-                        transporter.sendMail(mailOptions, function (error, info) {
-                            if (error) {
-                                logger.info(error);
-                            } else {
-                                logger.info('Email sent: ' + info.response);
-                            }
+                        const { statusCode, data } = await curly.post(`https://hooks.slack.com/services/${process.env.SECRET}`, {
+                            postFields: JSON.stringify({
+                                "text": ` 🚨 To keep the validator relayer running, topup the eth account ${txExecutor.address} on CENNZnets ${process.env.NETWORK} chain`
+                            }),
+                            httpHeader: [
+                                'Content-Type: application/json',
+                                'Accept: application/json'
+                            ],
                         });
+                        logger.info(`Slack notification sent ${data} and status code ${statusCode}`);
                     }
                     return resolve();
                 }
@@ -135,6 +121,7 @@ async function main (networkName, bridgeContractAddress) {
     await api.rpc.chain
         .subscribeFinalizedHeads(async (head) => {
            const blockNumber = head.number.toNumber();
+           logger.info(`timeStampInMs: ${Date.now()}`);
            logger.info(`At blocknumber: ${blockNumber}`);
 
            const blockHash = head.hash.toString();
