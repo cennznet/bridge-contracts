@@ -7,7 +7,7 @@ async function verifyMeta(api, listOfTokens) {
     let successfulAddress = new Set();
     let unsuccessfulAddress = new Set();
     await Promise.all(
-        listOfTokens.map(async ({address, symbol, decimals}, idx) => {
+        listOfTokens.map(async ({address, symbol, decimals}) => {
             const metaForAddress = await api.query.erc20Peg.erc20Meta(address);
             const [symbolApi, decimalApi] = metaForAddress.toHuman();
             if (symbol.toString() === symbolApi.toString() && decimals.toString() === decimalApi.toString()) {

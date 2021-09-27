@@ -1,3 +1,4 @@
+const { ethers } = require("hardhat");
 // Deposit some ERC20 token to the CENNZnet bridge contract
 async function main() {
     const erc20Peg = await ethers.getContractFactory('ERC20Peg');

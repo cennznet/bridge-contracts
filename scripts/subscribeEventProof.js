@@ -1,4 +1,4 @@
-
+const { ethers } = require("hardhat");
 const { Api } = require('@cennznet/api');
 require("dotenv").config();
 const logger = require('./logger');
@@ -10,6 +10,7 @@ const IGNORE_KEY = '0x0000000000000000000000000000000000000000000000000000000000
 
 async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, lastValidatorsSet) {
     let eventProof = null;
+    // eslint-disable-next-line no-async-promise-executor
     return new Promise(async (resolve, reject) => {
         try {
             await api.rpc.ethy.getEventProof(eventId, async (versionedEventProof) => {

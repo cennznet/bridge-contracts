@@ -50,7 +50,7 @@ async function verifyMeta(api, listOfTokens) {
     let successfulAddress = new Set();
     let unsuccessfulAddress = new Set();
     await Promise.all(
-        listOfTokens.map(async ({address, symbol, decimals}, idx) => {
+        listOfTokens.map(async ({address, symbol, decimals}) => {
             const metaForAddress = await api.query.erc20Peg.erc20Meta(address);
             const [symbolApi, decimalApi] = metaForAddress.toHuman();
             if (symbol.toString() === symbolApi.toString() && decimals.toString() === decimalApi.toString()) {
@@ -90,7 +90,6 @@ async function main() {
         res.on("end", async function () {
             const content = JSON.parse(dataQueue);
             let listOfTokens = content['tokens'];
-            let details = [];
             let storageMap = {};
             // Push Centrality tokens
             listOfTokens.push({address: '0xd4fffa07929b1901fdb30c1c67f80e1185d4210f', symbol: 'CERTI', decimals: 18});
