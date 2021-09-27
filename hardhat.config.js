@@ -1,4 +1,5 @@
 require('@nomiclabs/hardhat-ethers');
+require("@nomiclabs/hardhat-etherscan");
 require("dotenv").config();
 
 module.exports = {
@@ -24,5 +25,8 @@ module.exports = {
       url: `https://eth-ropsten.alchemyapi.io/v2/${process.env.MAINNET_INFURA_API_KEY}`,
       accounts: [`0x${process.env.ETH_ACCOUNT_KEY}`],
     }
+  },
+  etherscan: {
+      apiKey: process.env.ETHERSCAN_KEY
   },
 }

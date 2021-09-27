@@ -15,8 +15,10 @@
     "setAssetMeta": "node scripts/setAssetMeta.js",
     "setAssetMetaViaJSON": "node scripts/setMetadataViaStorage.js",
     "startEthNode": "./scripts/startEthNode.sh",
+    "setInitialValidators": "hardhat run scripts/forceActiveValidators.js --network $1",
     "validatorRelayer": "hardhat run scripts/subscribeEventProof.js --network $1",
     "claimRelayer": "hardhat run scripts/subscribeEthereumDeposit.js --network $1",
+    "publish": "npx hardhat verify --network ropsten $1",
     "test": "yarn build && env TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\", \"esModuleInterop\": true, \"resolveJsonModule\": true, \"types\": [\"@types/mocha\"] }' mocha -r ts-node/register 'test/**/*.test.ts'"
   },
   "resolutions": {
@@ -43,18 +45,20 @@
     "node-libcurl": "^2.3.3",
     "elliptic": "^6.5.4",
     "ethereum-waffle": "^3.4.0",
+    "moment": "^2.29.1",
     "dotenv": "^8.2.0",
-    "winston": "^3.2.1",
-    "winston-daily-rotate-file": "^4.5.5"
+    "winston": "^3.2.1"
   },
   "devDependencies": {
+    "@cennznet/api": "^1.5.0-alpha.5",
+    "@cennznet/util": "^1.5.0-alpha.5",
     "@nomiclabs/hardhat-ethers": "^2.0.2",
+    "@nomiclabs/hardhat-etherscan": "^2.1.7",
     "@nomiclabs/hardhat-waffle": "^2.0.1",
     "@openzeppelin/contracts": "^4.3.2",
     "@types/node": "^16.7.13",
-    "@cennznet/api": "^1.5.0-alpha.3",
-    "@cennznet/util": "^1.5.0-alpha.3",
     "chai": "^4.3.4",
+    "eslint": "^7.32.0",
     "ethers": "^5.4.6",
     "fastify": "^3.22.0",
     "fastify-mongodb": "^4.1.0",
@@ -63,13 +67,12 @@
     "lodash": ">=4.17.21",
     "mocha": "^9.0.2",
     "mongoose": "^6.0.9",
-    "eslint": "^7.32.0",
+    "node-fetch": ">=2.6.1",
+    "set-value": "^4.1.0",
     "ts-node": "^10.0.0",
     "typescript": "^4.3.5",
-    "ws": ">=5.2.3",
-    "set-value": "^4.1.0",
     "underscore": ">=1.12.1",
-    "yargs-parser": ">=5.0.1",
-    "node-fetch": ">=2.6.1"
+    "ws": ">=5.2.3",
+    "yargs-parser": ">=5.0.1"
   }
 }

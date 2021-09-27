@@ -34,6 +34,11 @@ Deploying TestToken contract...
 TestToken deployed to: 0xe178481d8268767F37A9060329187dfbC55b18Ff
 ```
 
+## Publish contract
+```bash
+yarn publish CONTRACT_ADDRESS ARGS
+```
+
 ## Run Relayer Services
 ```bash
 # transaction status api server
