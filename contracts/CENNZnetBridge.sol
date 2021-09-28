@@ -109,9 +109,10 @@ contract CENNZnetBridge is Ownable {
         validators[proof.validatorSetId] = newValidators;
         activeValidatorSetId = proof.validatorSetId;
 
-        // return any accumlated fees to the sender as a reward
+        // return any accumulated fees to the sender as a reward
         uint reward = address(this).balance;
-        payable(msg.sender).transfer(reward);
+        (bool sent, ) = msg.sender.call{value: reward}("");
+        require(sent, "Failed to send Ether");
 
         emit SetValidators(newValidators, reward, proof.validatorSetId);
     }
