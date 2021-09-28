@@ -3,8 +3,8 @@ pragma solidity ^0.8.0;
 
 import "./CENNZnetBridge.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 // Provides an ERC20/GA CENNZnet peg
 // - depositing: lock ERC20 tokens to redeem CENNZnet "generic asset" 1:1
@@ -20,7 +20,9 @@ contract ERC20Peg is Ownable {
     // CENNZnet bridge contract address
     CENNZnetBridge public bridge;
     // Reserved address for native Eth deposits/withdraw
-    address public ETH_RESERVED_TOKEN_ADDRESS = address(0);
+    address constant public ETH_RESERVED_TOKEN_ADDRESS = address(0);
+    // CENNZ ERC20 contract address
+    address constant public CENNZ_TOKEN_ADDRESS = 0x1122B6a0E00DCe0563082b6e2953f3A943855c1F;
 
     constructor(address _bridge) {
         bridge = CENNZnetBridge(_bridge);
@@ -33,15 +35,16 @@ contract ERC20Peg is Ownable {
     // tokenType '0' is reserved for native Eth
     function deposit(address tokenType, uint256 amount, bytes32 cennznetAddress) payable external {
         require(depositsActive, "deposits paused");
+        require(cennznetAddress != bytes32(0), "invalid CENNZnet address");
 
         if (tokenType == ETH_RESERVED_TOKEN_ADDRESS) {
             require(msg.value == amount, "incorrect deposit amount");
         } else {
             // CENNZ deposits will require a vote to activate
-            if (tokenType == 0x1122B6a0E00DCe0563082b6e2953f3A943855c1F) {
+            if (tokenType == CENNZ_TOKEN_ADDRESS) {
                 require(cennzDepositsActive, "cennz deposits paused");
             }
-            IERC20(tokenType).transferFrom(msg.sender, address(this), amount);
+            SafeERC20.safeTransferFrom(IERC20(tokenType), msg.sender, address(this), amount);
         }
 
         emit Deposit(msg.sender, tokenType, amount, cennznetAddress);
@@ -58,10 +61,9 @@ contract ERC20Peg is Ownable {
         bridge.verifyMessage{ value: msg.value }(message, proof);
 
         if (tokenType == ETH_RESERVED_TOKEN_ADDRESS) {
-            (bool sent, ) = msg.sender.call{value: amount}("");
-            require(sent, "Failed to send Ether");
+            payable(msg.sender).transfer(amount);
         } else {
-            IERC20(tokenType).transfer(recipient, amount);
+             SafeERC20.safeTransfer(IERC20(tokenType), recipient, amount);
         }
 
         emit Withdraw(recipient, tokenType, amount);
