@@ -40,7 +40,7 @@ describe('CENNZnetBridge', () => {
     console.log('validator address', validatorAddress);
 
     // Setup the bridge contract's initial validator set
-    await bridge.forceSetValidators(
+    await bridge.forceActiveValidatorSet(
         // 'Alice' default CENNZnet ECDSA public key converted to Eth address
         [validatorAddress, validatorAddress, validatorAddress, validatorAddress, validatorAddress],
         validatorSetId,
@@ -80,7 +80,7 @@ describe('CENNZnetBridge', () => {
         let validatorAddress = utils.computeAddress(validatorPublicKey);
 
         // Setup the bridge contract's initial validator set
-        await bridge.forceSetValidators(
+        await bridge.forceActiveValidatorSet(
             // 'Alice' default CENNZnet ECDSA public key converted to Eth address
             [validatorAddress],
             validatorSetId,
@@ -122,7 +122,7 @@ describe('CENNZnetBridge', () => {
     let validatorAddress = utils.computeAddress(validatorPublicKey);
 
     // Setup the bridge contract's initial validator set
-    await bridge.forceSetValidators(
+    await bridge.forceActiveValidatorSet(
         // 'Alice' default CENNZnet ECDSA public key converted to Eth address
         [validatorAddress, validatorAddress, validatorAddress, validatorAddress, validatorAddress],
         validatorSetId,
@@ -168,7 +168,7 @@ describe('CENNZnetBridge', () => {
     let validatorAddress = utils.computeAddress(validatorPublicKey);
 
     // Setup the bridge contract's initial validator set
-    await bridge.forceSetValidators(
+    await bridge.forceActiveValidatorSet(
         // 'Alice' default CENNZnet ECDSA public key converted to Eth address
         [validatorAddress],
         validatorSetId,
