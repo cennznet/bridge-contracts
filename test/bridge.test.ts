@@ -166,7 +166,6 @@ describe('CENNZnetBridge', () => {
     // Public Key from CENNZnet: 0x0204dad6fc9c291c68498de501c6d6d17bfe28aee69cfbf71b2cc849caafcb0159
     let validatorPublicKey = '0x0204dad6fc9c291c68498de501c6d6d17bfe28aee69cfbf71b2cc849caafcb0159';
     let validatorAddress = utils.computeAddress(validatorPublicKey);
-
     // Setup the bridge contract's initial validator set
     await bridge.forceActiveValidatorSet(
         // 'Alice' default CENNZnet ECDSA public key converted to Eth address

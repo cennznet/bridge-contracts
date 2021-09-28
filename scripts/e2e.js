@@ -166,6 +166,28 @@ async function main() {
         });
     });
 
+
+    // Ignore if validator public key is 0x000..
+    const IGNORE_KEY = '0x000000000000000000000000000000000000000000000000000000000000000000';
+
+    // Set validators for bridge
+    console.log('Set validators for bridge...');
+    const notaryKeys = await api.query.ethBridge.notaryKeys();
+    const newValidators = notaryKeys.map((notaryKey) => {
+        console.log('notary key:',notaryKey.toString());
+        if (notaryKey.toString() === IGNORE_KEY) return notaryKey.toString()
+        let decompressedPk = ethers.utils.computePublicKey(notaryKey);
+        let h = ethers.utils.keccak256('0x' + decompressedPk.slice(4));
+        return '0x' + h.slice(26)
+    });
+    console.log('newValidators::',newValidators);
+    const eventProof_Id = await api.query.ethBridge.notarySetProofId();
+    console.log('event proof id::', eventProof_Id.toString());
+    const event_Proof = await api.derive.ethBridge.eventProof(eventProof_Id);
+    console.log('Event proof::', event_Proof);
+    console.log(await bridge.forceActiveValidatorSet(newValidators, event_Proof.validatorSetId  , {gasLimit: 500000}));
+
+
     /***************** Make Withdrawal on ETHEREUM **********************/
 
     // Check beneficiary balance before first withdrawal
