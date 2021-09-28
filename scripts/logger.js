@@ -14,9 +14,6 @@ const transport = new winston.transports.DailyRotateFile({
   maxFiles: '14d',
   createSymlink: true
 });
-transport.on('rotate', function(oldFilename, newFilename) {
-
-});
 
 const logger = winston.createLogger({
   format: winston.format.json(),

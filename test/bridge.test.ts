@@ -40,14 +40,14 @@ describe('CENNZnetBridge', () => {
     console.log('validator address', validatorAddress);
 
     // Setup the bridge contract's initial validator set
-    await bridge.forceSetValidators(
+    await bridge.forceActiveValidatorSet(
         // 'Alice' default CENNZnet ECDSA public key converted to Eth address
         [validatorAddress, validatorAddress, validatorAddress, validatorAddress, validatorAddress],
         validatorSetId,
     );
     expect(await bridge.validators(validatorSetId, 0), validatorAddress);
 
-    // A CENNZnet validator signature    
+    // A CENNZnet validator signature
     let signature = utils.hexlify('0x391d9ea095cf8d41b64f30b51447e44766bc2b8042ba7721597279fac5c9ccf377a5c1ba02a770b50c0a97636579811bf8a1da8d9f126985a1290ddf559283a701');
     let sig = utils.splitSignature(signature);
 
@@ -78,15 +78,15 @@ describe('CENNZnetBridge', () => {
         let validatorSetId = 1;
         let validatorPublicKey = '0x0204dad6fc9c291c68498de501c6d6d17bfe28aee69cfbf71b2cc849caafcb0159';
         let validatorAddress = utils.computeAddress(validatorPublicKey);
-  
+
         // Setup the bridge contract's initial validator set
-        await bridge.forceSetValidators(
+        await bridge.forceActiveValidatorSet(
             // 'Alice' default CENNZnet ECDSA public key converted to Eth address
             [validatorAddress],
             validatorSetId,
         );
-    
-        // A CENNZnet validator signature    
+
+        // A CENNZnet validator signature
         let signature = utils.hexlify('0x391d9ea095cf8d41b64f30b51447e44766bc2b8042ba7721597279fac5c9ccf377a5c1ba02a770b50c0a97636579811bf8a1da8d9f126985a1290ddf559283a701');
         let sig = utils.splitSignature(signature);
 
@@ -122,13 +122,13 @@ describe('CENNZnetBridge', () => {
     let validatorAddress = utils.computeAddress(validatorPublicKey);
 
     // Setup the bridge contract's initial validator set
-    await bridge.forceSetValidators(
+    await bridge.forceActiveValidatorSet(
         // 'Alice' default CENNZnet ECDSA public key converted to Eth address
         [validatorAddress, validatorAddress, validatorAddress, validatorAddress, validatorAddress],
         validatorSetId,
     );
 
-    // A CENNZnet validator signature    
+    // A CENNZnet validator signature
     let signature = utils.hexlify('0x391d9ea095cf8d41b64f30b51447e44766bc2b8042ba7721597279fac5c9ccf377a5c1ba02a770b50c0a97636579811bf8a1da8d9f126985a1290ddf559283a701');
     let sig = utils.splitSignature(signature);
 
@@ -166,20 +166,39 @@ describe('CENNZnetBridge', () => {
     // Public Key from CENNZnet: 0x0204dad6fc9c291c68498de501c6d6d17bfe28aee69cfbf71b2cc849caafcb0159
     let validatorPublicKey = '0x0204dad6fc9c291c68498de501c6d6d17bfe28aee69cfbf71b2cc849caafcb0159';
     let validatorAddress = utils.computeAddress(validatorPublicKey);
-
     // Setup the bridge contract's initial validator set
-    await bridge.forceSetValidators(
+    await bridge.forceActiveValidatorSet(
         // 'Alice' default CENNZnet ECDSA public key converted to Eth address
         [validatorAddress],
         validatorSetId,
     );
 
-    // A CENNZnet validator signature    
+    // A CENNZnet validator signature
     let signature = utils.hexlify('0x391d9ea095cf8d41b64f30b51447e44766bc2b8042ba7721597279fac5c9ccf377a5c1ba02a770b50c0a97636579811bf8a1da8d9f126985a1290ddf559283a701');
     let sig = utils.splitSignature(signature);
 
     // We've sent this event in a previous tx
     let verificationFee = await bridge.verificationFee();
+    let eventIdExist = await bridge.eventIds(eventId);
+    console.log('eventIdExist:',eventIdExist);
+    // 1st time called
+    await bridge.verifyMessage(
+        message,
+        {
+            eventId,
+            validatorSetId,
+            v: [sig.v],
+            r: [sig.r],
+            s: [sig.s],
+        },
+        {
+            gasLimit: 100000,
+            value: verificationFee,
+        }
+    );
+    eventIdExist = await bridge.eventIds(eventId);
+    console.log('eventIdExist:',eventIdExist);
+    // 2nd time called
     await expect(
         bridge.verifyMessage(
             message,

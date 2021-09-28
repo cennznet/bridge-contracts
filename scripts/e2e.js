@@ -1,5 +1,6 @@
 const { Api } = require('@cennznet/api');
 const { Keyring } = require('@polkadot/keyring');
+const { ethers } = require("hardhat");
 
 async function main() {
 
@@ -65,8 +66,8 @@ async function main() {
         transaction4
     ]);
 
-    await new Promise(async (resolve, reject) => {
-        await api.tx.sudo.sudo(batchBridgeActivationEx).signAndSend(alice, async ({status, events}) => {
+    await new Promise( (resolve) => {
+         api.tx.sudo.sudo(batchBridgeActivationEx).signAndSend(alice, async ({status, events}) => {
             if (status.isInBlock) {
                 events.forEach(({phase, event: {data, method, section}}) => {
                     console.log('\t', phase.toString(), `: ${section}.${method}`, data.toString());
@@ -90,8 +91,8 @@ async function main() {
 
     /***************** Make Deposit on CENNZnet **********************/
     let eventClaimId;
-    await new Promise(async (resolve, reject) => {
-        await api.tx.erc20Peg.depositClaim(depositTxHash, claim).signAndSend(alice, async ({status, events}) => {
+    await new Promise( (resolve) => {
+         api.tx.erc20Peg.depositClaim(depositTxHash, claim).signAndSend(alice, async ({status, events}) => {
             if (status.isInBlock) {
                 for (const {event: {method, section, data}} of events) {
                     console.log('\t', `: ${section}.${method}`, data.toString());
@@ -109,8 +110,9 @@ async function main() {
 
 
     let eventProofId = null;
-    await new Promise(async (resolve, reject) => {
-        const unsubHeads = await api.rpc.chain.subscribeNewHeads((lastHeader) => {
+    // eslint-disable-next-line no-async-promise-executor
+    await new Promise(async (resolve, ) => {
+        const unsubHeads = await api.rpc.chain.subscribeNewHeads(() => {
             console.log('Waiting till Ethbridge sends a verify event...');
             console.log('Also look for Erc20deposit event to check if deposit claim succeeeded')
             api.query.system.events((events) => {
@@ -132,10 +134,10 @@ async function main() {
             });
         });
     });
-    await new Promise(async (resolve, reject) => {
+    await new Promise( (resolve) => {
         let amount = depositAmount;
         const ethBeneficiary = deployer.address;
-        await api.tx.erc20Peg.withdraw(testTokenId, amount, ethBeneficiary,).signAndSend(alice, async ({status, events}) => {
+        api.tx.erc20Peg.withdraw(testTokenId, amount, ethBeneficiary,).signAndSend(alice, async ({status, events}) => {
             if (status.isInBlock) {
                 for (const {event: {method, section, data}} of events) {
                     if (section === 'erc20Peg' && method == 'Erc20Withdraw') {
@@ -150,8 +152,9 @@ async function main() {
     });
 
     let eventProof;
-    await new Promise(async (resolve, reject) => {
-        const unsubHeads = await api.rpc.chain.subscribeNewHeads(async (lastHeader) => {
+    // eslint-disable-next-line no-async-promise-executor
+    await new Promise(async (resolve) => {
+        const unsubHeads = await api.rpc.chain.subscribeNewHeads(async () => {
             console.log(`Waiting till event proof is fetched....`);
             const versionedEventProof = (await api.rpc.ethy.getEventProof(eventProofId)).toJSON();
             if (versionedEventProof !== null) {
@@ -162,6 +165,28 @@ async function main() {
             }
         });
     });
+
+
+    // Ignore if validator public key is 0x000..
+    const IGNORE_KEY = '0x000000000000000000000000000000000000000000000000000000000000000000';
+
+    // Set validators for bridge
+    console.log('Set validators for bridge...');
+    const notaryKeys = await api.query.ethBridge.notaryKeys();
+    const newValidators = notaryKeys.map((notaryKey) => {
+        console.log('notary key:',notaryKey.toString());
+        if (notaryKey.toString() === IGNORE_KEY) return notaryKey.toString()
+        let decompressedPk = ethers.utils.computePublicKey(notaryKey);
+        let h = ethers.utils.keccak256('0x' + decompressedPk.slice(4));
+        return '0x' + h.slice(26)
+    });
+    console.log('newValidators::',newValidators);
+    const eventProof_Id = await api.query.ethBridge.notarySetProofId();
+    console.log('event proof id::', eventProof_Id.toString());
+    const event_Proof = await api.derive.ethBridge.eventProof(eventProof_Id);
+    console.log('Event proof::', event_Proof);
+    console.log(await bridge.forceActiveValidatorSet(newValidators, event_Proof.validatorSetId  , {gasLimit: 500000}));
+
 
     /***************** Make Withdrawal on ETHEREUM **********************/
 

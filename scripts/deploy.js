@@ -1,3 +1,4 @@
+const { ethers } = require("hardhat");
 // deploy contracts for test
 async function main() {
 

@@ -75,7 +75,7 @@ describe('Erc20Peg', () => {
     expect(pegEthBalance).to.equal(depositAmount);
     let userEthEnd = await erc20Peg.provider.getBalance(wallet.address);
     // final balance is start - deposit amount - gas fees
-    expect(userEthEnd.toNumber() < (userEthStart.toNumber() - depositAmount));
+    expect(userEthEnd.lt(userEthStart.sub(depositAmount)));
   });
 
   it('deposit, peg inactive', async () => {
