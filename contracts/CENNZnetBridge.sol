@@ -97,24 +97,25 @@ contract CENNZnetBridge is Ownable {
     // ~6,737,588 gas
     function setValidators(
         address[] memory newValidators,
+        uint32 newValidatorSetId,
         CENNZnetEventProof memory proof
     ) external payable {
         require(newValidators.length > 0, "empty validator set");
-        require(proof.validatorSetId > activeValidatorSetId || proof.validatorSetId == 0 , "validator set id replayed");
+        require(newValidatorSetId > activeValidatorSetId , "validator set id replayed");
 
-        bytes memory message = abi.encode(newValidators, proof.validatorSetId, proof.eventId);
+        bytes memory message = abi.encode(newValidators, newValidatorSetId, proof.validatorSetId, proof.eventId);
         this.verifyMessage(message, proof);
 
         // update
-        validators[proof.validatorSetId] = newValidators;
-        activeValidatorSetId = proof.validatorSetId;
+        validators[newValidatorSetId] = newValidators;
+        activeValidatorSetId = newValidatorSetId;
 
         // return any accumulated fees to the sender as a reward
         uint reward = address(this).balance;
         (bool sent, ) = msg.sender.call{value: reward}("");
         require(sent, "Failed to send Ether");
 
-        emit SetValidators(newValidators, reward, proof.validatorSetId);
+        emit SetValidators(newValidators, reward, newValidatorSetId);
     }
 
     // Admin functions
