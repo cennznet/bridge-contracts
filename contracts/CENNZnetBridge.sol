@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 // Proof of a witnessed event by CENNZnet validators
@@ -40,6 +41,8 @@ contract CENNZnetBridge is Ownable {
     uint public proofTTL = 3;
     // Whether the bridge is active or not
     bool public active = true;
+    // Max reward paid out to successful caller of `setValidator`
+    uint public maxRewardPayout = 1e18;
 
     event SetValidators(address[], uint reward, uint32 validatorSetId);
 
@@ -110,8 +113,8 @@ contract CENNZnetBridge is Ownable {
         validators[newValidatorSetId] = newValidators;
         activeValidatorSetId = newValidatorSetId;
 
-        // return any accumulated fees to the sender as a reward
-        uint reward = address(this).balance;
+        // return accumulated fees to the sender as a reward, capped at `maxRewardPayout`
+        uint reward = Math.min(address(this).balance, maxRewardPayout);
         (bool sent, ) = msg.sender.call{value: reward}("");
         require(sent, "Failed to send Ether");
 
@@ -141,6 +144,11 @@ contract CENNZnetBridge is Ownable {
         proofTTL = newTTL;
     }
 
+    // Set the max reward payout for `setValidator` incentive
+    function setMaxRewardPayout(uint newMaxRewardPayout) external onlyOwner {
+        maxRewardPayout = newMaxRewardPayout;
+    }
+
     // Set the fee for verify messages
     function setVerificationFee(uint newFee) external onlyOwner {
         verificationFee = newFee;
@@ -148,6 +156,7 @@ contract CENNZnetBridge is Ownable {
 
     // Set the threshold % required for proof verification
     function setThreshold(uint newThresholdPercent) external onlyOwner {
+        require(newThresholdPercent <= 100, "percent must be <= 100");
         thresholdPercent = newThresholdPercent;
     }
 
