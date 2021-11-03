@@ -17,7 +17,7 @@ module.exports = {
       accounts: [`0x${process.env.ACCOUNT_KEY}`],
     },
     ropsten: {
-      url: `https://eth-ropsten.alchemyapi.io/v2/${process.env.ROPSTEN_INFURA_API_KEY}`
+      url: `https://eth-ropsten.alchemyapi.io/v2/${process.env.ROPSTEN_INFURA_API_KEY}`,
       accounts: [`0x${process.env.ACCOUNT_KEY}`],
     },
     mainnet: {
