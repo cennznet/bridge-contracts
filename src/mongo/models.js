@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
 
-const BRIDGE_CLAIM = 'bridgeClaim';
+const BRIDGE_CLAIM = 'claims';
 
 const BridgeClaimSchema = new Schema({
     _id: String,
