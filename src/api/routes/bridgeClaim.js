@@ -1,12 +1,12 @@
 const { BRIDGE_CLAIM } = require('../../mongo/models');
 
-async function routes (fastify, options) {
+async function routes (fastify) {
     const collectionBridgeClaim = fastify.mongo.db.collection(BRIDGE_CLAIM);
 
-    fastify.get('/bridge/txHash/:txHash', async (request, reply) => {
+    fastify.get('/bridge/txHash/:txHash', async (request) => {
       const result = await collectionBridgeClaim.findOne({ txHash: request.params.txHash });
       if (!result) {
-        throw new Error('invalid value')
+        throw new Error('Record not found')
       }
       return result
     })

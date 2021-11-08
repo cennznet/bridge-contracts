@@ -9,7 +9,7 @@ const fastify = Fastify({
 fastify.register(mongoConnector)
 fastify.register(bridge)
 
-fastify.listen(3000, function (err, address) {
+fastify.listen(3000, function (err) {
   if (err) {
     fastify.log.error(err)
     process.exit(1)
