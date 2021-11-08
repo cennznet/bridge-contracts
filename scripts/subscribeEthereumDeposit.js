@@ -52,7 +52,7 @@ async function sendClaim(claim, transactionHash, api, signer, nonce) {
 async function main (networkName, pegContractAddress) {
     networkName = networkName || 'local';
 
-    const connectionStr = `mongodb+srv://${process.env.MONGO_INITDB_ROOT_USERNAME}:${process.env.MONGO_INITDB_ROOT_PASSWORD}@${process.env.MONGO_HOST}/${process.env.MONGO_DB_NAME}`;
+    const connectionStr = process.env.MONGO_CONN_STR;
     await mongoose.connect(connectionStr);
 
     const api = await Api.create({network: networkName});
