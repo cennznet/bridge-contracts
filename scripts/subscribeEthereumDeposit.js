@@ -16,9 +16,9 @@ async function updateTxStatusInDB(txStatus, txHash, claimId) {
     logger.info(`Updated the bridge status ${txStatus} for txHash: ${txHash}`);
 }
 
-async function updateClaimSuccessfulInDB(claimId) {
+async function updateClaimInDB(claimId, status) {
     const filter = {claimId: claimId};
-    const update = { status: 'Successful' };
+    const update = { status: status };
     const options = { upsert: true, new: true, setDefaultsOnInsert: true }; // create new if record does not exist, else update
     await BridgeClaim.updateOne(filter, update, options);
     logger.info(`Updated the bridge status SUCCESSFUL for claimId: ${claimId}`);
@@ -103,7 +103,11 @@ async function main (networkName, pegContractAddress) {
                 const { section, method, data } = event;
                 if (section === 'ethBridge' && method === 'Verified') {
                     const claimId = data[0];
-                    await updateClaimSuccessfulInDB(claimId);
+                    await updateClaimInDB(claimId, 'Successful');
+                }
+                else if (section === 'ethBridge' && method === 'Invalid') {
+                    const claimId = data[0];
+                    await updateClaimInDB(claimId, 'Failed');
                 }
             });
         });
