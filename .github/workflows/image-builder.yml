@@ -4,19 +4,12 @@
 name: "Image Builder"
 
 on:
-  release:
-    types:
-      - "created"
-      - "released"
   push:
     branches:
       - "main"
     paths:
-      - "**.rs"
-      - "**.toml"
-      - "**.yml"
-      - "**.lock"
-      - "genesis/**"
+      - "**.js"
+      - "**.json"
       - "Dockerfile"
 
 jobs:
@@ -24,7 +17,7 @@ jobs:
     # only run if prechecks pass and the source branch is named 'prerelease/*'
     runs-on: [self-hosted, linux]
     env:
-      IMAGE_NAME: "cennznet/depositClaim"
+      IMAGE_NAME: "cennznet/bridge-relayer-service"
     steps:
       - uses: actions/checkout@v2
         with:
