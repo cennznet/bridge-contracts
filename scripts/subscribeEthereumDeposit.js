@@ -36,7 +36,7 @@ async function sendClaim(claim, transactionHash, api, signer, nonce) {
                         const eventClaimId = data[0];
                         console.log('*******************************************');
                         console.log('Deposit claim on CENNZnet side started for claim Id', eventClaimId.toString());
-                        await updateTxStatusInDB( 'Submitted', transactionHash, eventClaimId);
+                        await updateTxStatusInDB( 'CennznetConfirming', transactionHash, eventClaimId);
                         resolve(eventClaimId);
                     }
                     else if (section === 'system' && method === 'ExtrinsicFailed') {
@@ -76,7 +76,7 @@ async function main (networkName, pegContractAddress) {
     peg.on("Deposit", async (sender, tokenAddress, amount, cennznetAddress, eventInfo) => {
         let nonce = (await api.rpc.system.accountNextIndex(claimer.address)).toNumber();
         console.log('Nonce:::', nonce);
-        await updateTxStatusInDB( 'waiting for block confirmations', eventInfo.transactionHash, null);
+        await updateTxStatusInDB( 'EthereumConfirming', eventInfo.transactionHash, null);
         const tx = await eventInfo.getTransaction();
         await tx.wait(eventConfirmation+1);
         const claim = {
