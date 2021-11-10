@@ -7,13 +7,29 @@ const mongoose = require('mongoose');
 const { BridgeClaim  } = require('../src/mongo/models');
 const { ethers } = require("hardhat");
 let txExecutor;
+const { curly } = require("node-libcurl");
 
-const airDropAmount = 5000;
+const airDropAmount = 50000;
 
 async function airDrop(claimId, signer, api, spendingAssetId) {
-    const record = await BridgeClaim.findOne({claimId});
-    const cennznetAddress = record.cennznetAddress;
-    await api.tx.genericAsset.transfer(spendingAssetId, cennznetAddress, airDropAmount).signAndSend(signer);
+    const signerBalance = await api.query.genericAsset.freeBalance(spendingAssetId, signer.address);
+    if (signerBalance.toNumber() > airDropAmount) {
+        const record = await BridgeClaim.findOne({claimId});
+        const cennznetAddress = record.cennznetAddress;
+        logger.info(`Air drop in progress for address ${cennznetAddress}`);
+        await api.tx.genericAsset.transfer(spendingAssetId, cennznetAddress, airDropAmount).signAndSend(signer);
+    } else {
+        const { statusCode, data } = await curly.post(`https://hooks.slack.com/services/${process.env.SLACK_SECRET}`, {
+            postFields: JSON.stringify({
+                "text": ` 🚨 To keep the claim relayer airdrop cpay, topup the cennznet account ${signer.address} on CENNZnets ${process.env.NETWORK} chain`
+            }),
+            httpHeader: [
+                'Content-Type: application/json',
+                'Accept: application/json'
+            ],
+        });
+        logger.info(`Slack notification sent ${data} and status code ${statusCode}`);
+    }
 }
 
 async function updateTxStatusInDB(txStatus, txHash, claimId, cennznetAddress) {
@@ -84,18 +100,21 @@ async function main (networkName, pegContractAddress) {
     peg.on("Deposit", async (sender, tokenAddress, amount, cennznetAddress, eventInfo) => {
         let nonce = (await api.rpc.system.accountNextIndex(claimer.address)).toNumber();
         console.log('Nonce:::', nonce);
-        await updateTxStatusInDB( 'EthereumConfirming', eventInfo.transactionHash, null, cennznetAddress);
-        const tx = await eventInfo.getTransaction();
-        await tx.wait(eventConfirmation+1);
-        const claim = {
-            tokenAddress,
-            amount: amount.toString(),
-            beneficiary: cennznetAddress
-        };
-        try {
-            await sendClaim(claim, eventInfo.transactionHash, api, claimer, nonce++);
-        } catch (e) {
-            console.log('err:',e);
+        const checkIfBridgePause = await api.query.ethBridge.bridgePaused();
+        if (!checkIfBridgePause.toHuman()) {
+            await updateTxStatusInDB('EthereumConfirming', eventInfo.transactionHash, null, cennznetAddress);
+            const tx = await eventInfo.getTransaction();
+            await tx.wait(eventConfirmation + 1);
+            const claim = {
+                tokenAddress,
+                amount: amount.toString(),
+                beneficiary: cennznetAddress
+            };
+            try {
+                await sendClaim(claim, eventInfo.transactionHash, api, claimer, nonce++);
+            } catch (e) {
+                console.log('err:', e);
+            }
         }
     });
 
