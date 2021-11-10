@@ -1,3 +1,4 @@
-FROM cennznet/bridge-relayer-service as builder
+FROM node:17-alpine
+RUN apk add --no-cache git
 COPY . .
 RUN yarn
