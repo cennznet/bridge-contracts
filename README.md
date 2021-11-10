@@ -44,9 +44,10 @@ docker run -p 3000:3000 \
 # depositClaim relayer
 docker run -e MONGO_URI="mongo+srv://<username>:<password>/bridgeDb" \
            -e NETWORK="rata|nikau|azalea" \
-           -e PEG_CONTRACT="0x12312312312312321" \
+           -e PEG_CONTRACT="0x...." \
            -e CENNZNET_SECRET="0x12312321 | //<uri>" \
-           -e SLACK_SECRET="...." \
+           -e SLACK_SECRET="......" \
+           -e ETH_ACCOUNT_KEY="0x..." \
            cennznet/bridge-relayer yarn run claimRelayer
 
 # validator set relayer

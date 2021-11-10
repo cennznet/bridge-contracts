@@ -64,7 +64,7 @@ jobs:
           ${{ runner.os }}-yarn-
     - name: test
       env:
-        ACCOUNT_KEY: ${{ secrets.ACCOUNT_KEY }}
+        ETH_ACCOUNT_KEY: ${{ secrets.ETH_ACCOUNT_KEY }}
         ROPSTEN_INFURA_API_KEY: ${{ secrets.ROPSTEN_INFURA_API_KEY }}
       run: |
         yarn install --frozen-lockfile
@@ -94,7 +94,7 @@ jobs:
           ${{ runner.os }}-yarn-
     - name: build
       env:
-        ACCOUNT_KEY: ${{ secrets.ACCOUNT_KEY }}
+        ETH_ACCOUNT_KEY: ${{ secrets.ETH_ACCOUNT_KEY }}
         ROPSTEN_INFURA_API_KEY: ${{ secrets.ROPSTEN_INFURA_API_KEY }}
       run: |
         yarn install --frozen-lockfile
@@ -119,7 +119,7 @@ jobs:
         docker exec testnet_node_alice curl ethNode:8545
     - name: run end to end deposit withdraw scenario for erc20 token
       env:
-        ACCOUNT_KEY: ${{ secrets.ACCOUNT_KEY }}
+        ETH_ACCOUNT_KEY: ${{ secrets.ETH_ACCOUNT_KEY }}
         ROPSTEN_INFURA_API_KEY: ${{ secrets.ROPSTEN_INFURA_API_KEY }}
       run: |
         yarn

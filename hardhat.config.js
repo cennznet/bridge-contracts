@@ -14,15 +14,15 @@ module.exports = {
   networks: {
     rinkeby: {
       url: `https://rinkeby.infura.io/v3/${process.env.RINKEBY_INFURA_API_KEY}`,
-      accounts: [`0x${process.env.ACCOUNT_KEY}`],
+      accounts: [`0x${process.env.ETH_ACCOUNT_KEY}`],
     },
     ropsten: {
       url: `https://eth-ropsten.alchemyapi.io/v2/${process.env.ROPSTEN_INFURA_API_KEY}`,
-      accounts: [`0x${process.env.ACCOUNT_KEY}`],
+      accounts: [`0x${process.env.ETH_ACCOUNT_KEY}`],
     },
     mainnet: {
       url: `https://eth-ropsten.alchemyapi.io/v2/${process.env.MAINNET_INFURA_API_KEY}`,
-      accounts: [`0x${process.env.ACCOUNT_KEY}`],
+      accounts: [`0x${process.env.ETH_ACCOUNT_KEY}`],
     }
   },
 }
