@@ -16,8 +16,11 @@ async function airDrop(claimId, signer, api, spendingAssetId) {
     if (signerBalance.toNumber() > airDropAmount) {
         const record = await BridgeClaim.findOne({claimId});
         const cennznetAddress = record.cennznetAddress;
-        logger.info(`Air drop in progress for address ${cennznetAddress}`);
-        await api.tx.genericAsset.transfer(spendingAssetId, cennznetAddress, airDropAmount).signAndSend(signer);
+        const checkRecordWithAddress = await BridgeClaim.find({cennznetAddress, status: 'Successful'});
+        if (checkRecordWithAddress.length === 1) {
+            logger.info(`Air drop in progress for address ${cennznetAddress}`);
+            await api.tx.genericAsset.transfer(spendingAssetId, cennznetAddress, airDropAmount).signAndSend(signer);
+        }
     } else {
         const { statusCode, data } = await curly.post(`https://hooks.slack.com/services/${process.env.SLACK_SECRET}`, {
             postFields: JSON.stringify({
