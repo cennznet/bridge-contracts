@@ -2,7 +2,7 @@ const fastifyPlugin = require('fastify-plugin');
 const fastifyMongo = require('fastify-mongodb');
 
 async function mongoConnector (fastify) {
-  const connectionStr = `${process.env.MONGO_INITDB_ROOT_USERNAME}:${process.env.MONGO_INITDB_ROOT_PASSWORD}@${process.env.MONGO_HOST}:${process.env.MONGO_PORT}/admin`;
+    const connectionStr = process.env.MONGO_URI;
   fastify.log.info(`connecting to mongodb ${connectionStr}`);
   fastify.register(fastifyMongo, {
     url: `mongodb://${connectionStr}`

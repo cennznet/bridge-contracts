@@ -75,7 +75,7 @@ async function sendClaim(claim, transactionHash, api, signer, nonce) {
 
 async function main (networkName, pegContractAddress) {
     networkName = networkName || 'local';
-    const connectionStr = process.env.MONGO_CONN_STR;
+    const connectionStr = process.env.MONGO_URI;
     await mongoose.connect(connectionStr);
 
     const api = await Api.create({network: networkName});
@@ -83,7 +83,7 @@ async function main (networkName, pegContractAddress) {
     [txExecutor] = await ethers.getSigners();
 
     const keyring = new Keyring({type: 'sr25519'});
-    const claimer = keyring.addFromUri(process.env.CENNZNET_SCERET);
+    const claimer = keyring.addFromUri(process.env.CENNZNET_SECRET);
     console.log('CENNZnet signer address:', claimer.address);
 
     const spendingAssetId = await api.query.genericAsset.spendingAssetId();
