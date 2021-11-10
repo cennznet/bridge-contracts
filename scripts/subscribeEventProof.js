@@ -57,7 +57,7 @@ async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, lastValid
                     const gasRequired = gasEstimated.mul(gasPrice);
                     logger.info(`Gas required: ${gasRequired.toString()}`);
                     if (balance.lt(gasRequired.mul(2))) {
-                        const { statusCode, data } = await curly.post(`https://hooks.slack.com/services/${process.env.SECRET}`, {
+                        const { statusCode, data } = await curly.post(`https://hooks.slack.com/services/${process.env.SLACK_SECRET}`, {
                             postFields: JSON.stringify({
                                 "text": ` 🚨 To keep the validator relayer running, topup the eth account ${txExecutor.address} on CENNZnets ${process.env.NETWORK} chain`
                             }),

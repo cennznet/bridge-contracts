@@ -34,6 +34,30 @@ Deploying TestToken contract...
 TestToken deployed to: 0xe178481d8268767F37A9060329187dfbC55b18Ff
 ```
 
+## Run Relayer Services
+```bash
+# transaction status api server
+docker run -p 3000:3000 \
+    -e MONGO_URI="mongo+srv://<username>:<password>/bridgeDb" \
+    cennznet/bridge-relayer yarn run api
+
+# depositClaim relayer
+docker run -e MONGO_URI="mongo+srv://<username>:<password>/bridgeDb" \
+           -e NETWORK="rata|nikau|azalea" \
+           -e PEG_CONTRACT="0x12312312312312321" \
+           -e CENNZNET_SECRET="0x12312321 | //<uri>" \
+           -e SLACK_SECRET="...." \
+           cennznet/bridge-relayer yarn run claimRelayer
+
+# validator set relayer
+docker run \
+    -e NETWORK="rata|nika|azalea" \
+    -e BRIDGE_CONTRACT="0x123123....." \
+    -e CENNZNET_SECRET="0x12312321 | //<uri>" \
+    -e SLACK_SECRET="...." \
+    cennznet/bridge-relayer yarn run validatorRelayer
+```
+
 ## Setup
 ```bash
 # install
