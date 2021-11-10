@@ -8,9 +8,17 @@ const { BridgeClaim  } = require('../src/mongo/models');
 const { ethers } = require("hardhat");
 let txExecutor;
 
-async function updateTxStatusInDB(txStatus, txHash, claimId) {
+const airDropAmount = 5000;
+
+async function airDrop(claimId, signer, api, spendingAssetId) {
+    const record = await BridgeClaim.findOne({claimId});
+    const cennznetAddress = record.cennznetAddress;
+    await api.tx.genericAsset.transfer(spendingAssetId, cennznetAddress, airDropAmount).signAndSend(signer);
+}
+
+async function updateTxStatusInDB(txStatus, txHash, claimId, cennznetAddress) {
     const filter = {txHash: txHash};
-    const update = { txHash: txHash, status: txStatus, claimId };
+    const update = { txHash: txHash, status: txStatus, claimId, cennznetAddress };
     const options = { upsert: true, new: true, setDefaultsOnInsert: true }; // create new if record does not exist, else update
     await BridgeClaim.updateOne(filter, update, options);
     logger.info(`Updated the bridge status ${txStatus} for txHash: ${txHash}`);
@@ -36,11 +44,11 @@ async function sendClaim(claim, transactionHash, api, signer, nonce) {
                         const eventClaimId = data[0];
                         console.log('*******************************************');
                         console.log('Deposit claim on CENNZnet side started for claim Id', eventClaimId.toString());
-                        await updateTxStatusInDB( 'CennznetConfirming', transactionHash, eventClaimId);
+                        await updateTxStatusInDB( 'CennznetConfirming', transactionHash, eventClaimId, claim.beneficiary);
                         resolve(eventClaimId);
                     }
                     else if (section === 'system' && method === 'ExtrinsicFailed') {
-                        await updateTxStatusInDB( 'Failed', transactionHash, null);
+                        await updateTxStatusInDB( 'Failed', transactionHash, null, claim.beneficiary);
                         reject(data.toJSON());
                     }
                 }
@@ -51,7 +59,6 @@ async function sendClaim(claim, transactionHash, api, signer, nonce) {
 
 async function main (networkName, pegContractAddress) {
     networkName = networkName || 'local';
-
     const connectionStr = process.env.MONGO_CONN_STR;
     await mongoose.connect(connectionStr);
 
@@ -63,6 +70,8 @@ async function main (networkName, pegContractAddress) {
     const claimer = keyring.addFromUri(process.env.CENNZNET_SCERET);
     console.log('CENNZnet signer address:', claimer.address);
 
+    const spendingAssetId = await api.query.genericAsset.spendingAssetId();
+
     // Get the bridge instance that was deployed
     const Peg = await ethers.getContractFactory('ERC20Peg');
     logger.info('Connecting to CENNZnet peg contract...');
@@ -72,11 +81,10 @@ async function main (networkName, pegContractAddress) {
     logger.info(`Executor: ${txExecutor.address}`);
     const eventConfirmation = (await api.query.ethBridge.eventConfirmations()).toNumber();
     console.log('eventConfirmation::',eventConfirmation);
-
     peg.on("Deposit", async (sender, tokenAddress, amount, cennznetAddress, eventInfo) => {
         let nonce = (await api.rpc.system.accountNextIndex(claimer.address)).toNumber();
         console.log('Nonce:::', nonce);
-        await updateTxStatusInDB( 'EthereumConfirming', eventInfo.transactionHash, null);
+        await updateTxStatusInDB( 'EthereumConfirming', eventInfo.transactionHash, null, cennznetAddress);
         const tx = await eventInfo.getTransaction();
         await tx.wait(eventConfirmation+1);
         const claim = {
@@ -104,6 +112,7 @@ async function main (networkName, pegContractAddress) {
                 if (section === 'ethBridge' && method === 'Verified') {
                     const claimId = data[0];
                     await updateClaimInDB(claimId, 'Successful');
+                    await airDrop(claimId, claimer, api, spendingAssetId);
                 }
                 else if (section === 'ethBridge' && method === 'Invalid') {
                     const claimId = data[0];

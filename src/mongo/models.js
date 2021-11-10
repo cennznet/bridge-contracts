@@ -8,7 +8,8 @@ const BridgeClaimSchema = new Schema({
     _id: String,
     txHash: String, // txHash from ethereum bridge contract - deposit
     status: String,
-    claimId: String
+    claimId: String,
+    cennznetAddress: String,
 }, { collection: BRIDGE_CLAIM });
 
 module.exports = {
