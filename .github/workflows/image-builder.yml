@@ -14,10 +14,9 @@ on:
 
 jobs:
   build-image:
-    # only run if prechecks pass and the source branch is named 'prerelease/*'
-    runs-on: [self-hosted, linux]
+    runs-on: ubuntu-latest
     env:
-      IMAGE_NAME: "cennznet/bridge-relayer-service"
+      IMAGE_NAME: "cennznet/bridge-relayer"
     steps:
       - uses: actions/checkout@v2
         with:
