@@ -1,6 +1,5 @@
 # Build a docker image on push to main
 # Also tag the image if commit is tagged
-
 name: "Image Builder"
 
 on:
