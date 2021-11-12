@@ -11,7 +11,7 @@ const { curly } = require("node-libcurl");
 
 const airDropAmount = 50000;
 
-async function airDrop(claimId, signer, api, spendingAssetId) {
+async function airDrop(claimId, signer, api, spendingAssetId, nonce) {
     const signerBalance = await api.query.genericAsset.freeBalance(spendingAssetId, signer.address);
     if (signerBalance.toNumber() > airDropAmount) {
         const record = await BridgeClaim.findOne({claimId});
@@ -19,7 +19,7 @@ async function airDrop(claimId, signer, api, spendingAssetId) {
         const checkRecordWithAddress = await BridgeClaim.find({cennznetAddress, status: 'Successful'});
         if (checkRecordWithAddress.length === 1) {
             logger.info(`Air drop in progress for address ${cennznetAddress}`);
-            await api.tx.genericAsset.transfer(spendingAssetId, cennznetAddress, airDropAmount).signAndSend(signer);
+            await api.tx.genericAsset.transfer(spendingAssetId, cennznetAddress, airDropAmount).signAndSend(signer, { nonce });
         }
     } else {
         const { statusCode, data } = await curly.post(`https://hooks.slack.com/services/${process.env.SLACK_SECRET}`, {
@@ -132,9 +132,10 @@ async function main (networkName, pegContractAddress) {
             events.map(async ({event}) => {
                 const { section, method, data } = event;
                 if (section === 'ethBridge' && method === 'Verified') {
+                    let nonce = (await api.rpc.system.accountNextIndex(claimer.address)).toNumber();
                     const claimId = data[0];
                     await updateClaimInDB(claimId, 'Successful');
-                    await airDrop(claimId, claimer, api, spendingAssetId);
+                    await airDrop(claimId, claimer, api, spendingAssetId, nonce++);
                 }
                 else if (section === 'ethBridge' && method === 'Invalid') {
                     const claimId = data[0];
