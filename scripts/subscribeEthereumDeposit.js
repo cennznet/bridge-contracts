@@ -101,8 +101,6 @@ async function main (networkName, pegContractAddress) {
     const eventConfirmation = (await api.query.ethBridge.eventConfirmations()).toNumber();
     console.log('eventConfirmation::',eventConfirmation);
     peg.on("Deposit", async (sender, tokenAddress, amount, cennznetAddress, eventInfo) => {
-        let nonce = (await api.rpc.system.accountNextIndex(claimer.address)).toNumber();
-        console.log('Nonce:::', nonce);
         const checkIfBridgePause = await api.query.ethBridge.bridgePaused();
         if (!checkIfBridgePause.toHuman()) {
             await updateTxStatusInDB('EthereumConfirming', eventInfo.transactionHash, null, cennznetAddress);
@@ -114,6 +112,8 @@ async function main (networkName, pegContractAddress) {
                 beneficiary: cennznetAddress
             };
             try {
+                let nonce = (await api.rpc.system.accountNextIndex(claimer.address)).toNumber();
+                console.log('Nonce:::', nonce);
                 await sendClaim(claim, eventInfo.transactionHash, api, claimer, nonce++);
             } catch (e) {
                 console.log('err:', e);
