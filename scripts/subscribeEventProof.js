@@ -28,7 +28,7 @@ async function updateLastEventProcessed(eventId, blockHash) {
     const filter = {};
     const update = { eventId, blockHash };
     const options = { upsert: true, new: true, setDefaultsOnInsert: true }; // create new if record does not exist, else update
-    await LastBlockScan.updateOne(filter, update, options);
+    await EventProcessed.updateOne(filter, update, options);
 }
 
 // Submit the event proof on Ethereum Bridge contract
