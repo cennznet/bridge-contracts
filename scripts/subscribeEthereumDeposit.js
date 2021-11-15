@@ -8,6 +8,7 @@ const { BridgeClaim  } = require('../src/mongo/models');
 const { ethers } = require("hardhat");
 let txExecutor;
 const { curly } = require("node-libcurl");
+const { hexToU8a } = require("@cennznet/util");
 
 const airDropAmount = 50000;
 
@@ -86,7 +87,8 @@ async function main (networkName, pegContractAddress) {
     [txExecutor] = await ethers.getSigners();
 
     const keyring = new Keyring({type: 'sr25519'});
-    const claimer = keyring.addFromUri(process.env.CENNZNET_SECRET);
+    const seed = hexToU8a(process.env.CENNZNET_SCERET);
+    const claimer = keyring.addFromSeed(seed);
     console.log('CENNZnet signer address:', claimer.address);
 
     const spendingAssetId = await api.query.genericAsset.spendingAssetId();
