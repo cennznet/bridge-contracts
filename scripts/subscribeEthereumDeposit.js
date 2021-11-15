@@ -8,10 +8,11 @@ const { BridgeClaim  } = require('../src/mongo/models');
 const { ethers } = require("hardhat");
 let txExecutor;
 const { curly } = require("node-libcurl");
+const { hexToU8a } = require("@cennznet/util");
 
 const airDropAmount = 50000;
 
-async function airDrop(claimId, signer, api, spendingAssetId) {
+async function airDrop(claimId, signer, api, spendingAssetId, nonce) {
     const signerBalance = await api.query.genericAsset.freeBalance(spendingAssetId, signer.address);
     if (signerBalance.toNumber() > airDropAmount) {
         const record = await BridgeClaim.findOne({claimId});
@@ -19,7 +20,7 @@ async function airDrop(claimId, signer, api, spendingAssetId) {
         const checkRecordWithAddress = await BridgeClaim.find({cennznetAddress, status: 'Successful'});
         if (checkRecordWithAddress.length === 1) {
             logger.info(`Air drop in progress for address ${cennznetAddress}`);
-            await api.tx.genericAsset.transfer(spendingAssetId, cennznetAddress, airDropAmount).signAndSend(signer);
+            await api.tx.genericAsset.transfer(spendingAssetId, cennznetAddress, airDropAmount).signAndSend(signer, { nonce });
         }
     } else {
         const { statusCode, data } = await curly.post(`https://hooks.slack.com/services/${process.env.SLACK_SECRET}`, {
@@ -86,7 +87,8 @@ async function main (networkName, pegContractAddress) {
     [txExecutor] = await ethers.getSigners();
 
     const keyring = new Keyring({type: 'sr25519'});
-    const claimer = keyring.addFromUri(process.env.CENNZNET_SECRET);
+    const seed = hexToU8a(process.env.CENNZNET_SCERET);
+    const claimer = keyring.addFromSeed(seed);
     console.log('CENNZnet signer address:', claimer.address);
 
     const spendingAssetId = await api.query.genericAsset.spendingAssetId();
@@ -101,8 +103,6 @@ async function main (networkName, pegContractAddress) {
     const eventConfirmation = (await api.query.ethBridge.eventConfirmations()).toNumber();
     console.log('eventConfirmation::',eventConfirmation);
     peg.on("Deposit", async (sender, tokenAddress, amount, cennznetAddress, eventInfo) => {
-        let nonce = (await api.rpc.system.accountNextIndex(claimer.address)).toNumber();
-        console.log('Nonce:::', nonce);
         const checkIfBridgePause = await api.query.ethBridge.bridgePaused();
         if (!checkIfBridgePause.toHuman()) {
             await updateTxStatusInDB('EthereumConfirming', eventInfo.transactionHash, null, cennznetAddress);
@@ -114,6 +114,8 @@ async function main (networkName, pegContractAddress) {
                 beneficiary: cennznetAddress
             };
             try {
+                let nonce = (await api.rpc.system.accountNextIndex(claimer.address)).toNumber();
+                console.log('Nonce:::', nonce);
                 await sendClaim(claim, eventInfo.transactionHash, api, claimer, nonce++);
             } catch (e) {
                 console.log('err:', e);
@@ -132,9 +134,10 @@ async function main (networkName, pegContractAddress) {
             events.map(async ({event}) => {
                 const { section, method, data } = event;
                 if (section === 'ethBridge' && method === 'Verified') {
+                    let nonce = (await api.rpc.system.accountNextIndex(claimer.address)).toNumber();
                     const claimId = data[0];
                     await updateClaimInDB(claimId, 'Successful');
-                    await airDrop(claimId, claimer, api, spendingAssetId);
+                    await airDrop(claimId, claimer, api, spendingAssetId, nonce++);
                 }
                 else if (section === 'ethBridge' && method === 'Invalid') {
                     const claimId = data[0];
