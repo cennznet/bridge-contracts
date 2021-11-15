@@ -5,7 +5,7 @@ async function mongoConnector (fastify) {
     const connectionStr = process.env.MONGO_URI;
   fastify.log.info(`connecting to mongodb ${connectionStr}`);
   fastify.register(fastifyMongo, {
-    url: `mongodb://${connectionStr}`
+    url: `${connectionStr}`,
   });
 }
 
