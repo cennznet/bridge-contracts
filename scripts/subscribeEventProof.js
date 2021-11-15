@@ -8,9 +8,9 @@ const { EventProcessed  } = require('../src/mongo/models');
 const { ethers } = require("hardhat");
 let txExecutor;
 
+const BUFFER = 10000000;
 // Ignore if validator public key is 0x000..
 const IGNORE_KEY = '0x000000000000000000000000000000000000000000000000000000000000000000';
-// const BRIDGE_BLOCK_STARTS_AT = 293880; //260000;//277000;     [277000 - 281876 - scanned]
 
 // Get the notary key from CENNZnet and convert it to public key to be used to set validator on bridge contract
 async function  extractNewValidators(api, blockHash) {
@@ -33,29 +33,27 @@ async function updateLastEventProcessed(eventId, blockHash) {
 
 // Submit the event proof on Ethereum Bridge contract
 async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, newValidatorSetId, blockHash) {
-    try {
-
-        const eventExistsOnEth = await bridge.eventIds(eventId.toString());
-        const eventProof = await withTimeout(api.derive.ethBridge.eventProof(eventId), 20000);
-        if (eventProof && !eventExistsOnEth) {
-            const newValidators = await extractNewValidators(api, blockHash);
-            logger.info(`Sending setValidators tx with the account: ${txExecutor.address}`);
-            logger.info(`Parameters :::`);
-            logger.info(`newValidators:${newValidators}`);
-            logger.info(`newValidatorSetId: ${newValidatorSetId}`);
-            logger.info(`event proof::${JSON.stringify(eventProof)}`);
-            const proof = {eventId: eventProof.eventId, validatorSetId: eventProof.validatorSetId, r: eventProof.r, s: eventProof.s, v: eventProof.v};
+    const eventExistsOnEth = await bridge.eventIds(eventId.toString());
+    const eventProof = await withTimeout(api.derive.ethBridge.eventProof(eventId), 20000);
+    if (eventProof && !eventExistsOnEth) {
+        const newValidators = await extractNewValidators(api, blockHash);
+        logger.info(`Sending setValidators tx with the account: ${txExecutor.address}`);
+        logger.info(`Parameters :::`);
+        logger.info(`newValidators:${newValidators}`);
+        logger.info(`newValidatorSetId: ${newValidatorSetId}`);
+        logger.info(`event proof::${JSON.stringify(eventProof)}`);
+        const proof = {
+            eventId: eventProof.eventId,
+            validatorSetId: eventProof.validatorSetId,
+            r: eventProof.r,
+            s: eventProof.s,
+            v: eventProof.v
+        };
+        try {
             const gasEstimated = await bridge.estimateGas.setValidators(newValidators, newValidatorSetId, proof, {gasLimit: 500000});
-            logger.info(JSON.stringify(await bridge.setValidators(newValidators, newValidatorSetId, proof, {gasLimit: 500000})));
-            const lastEventProcessed = await EventProcessed.findOne();
-            if (lastEventProcessed) {
-                const eventIdInDB = lastEventProcessed.eventId;
-                if(parseInt(eventIdInDB) > parseInt(eventId)) {
-                    await updateLastEventProcessed(eventId, blockHash.toString());
-                }
-            } else {
-                await updateLastEventProcessed(eventId, blockHash.toString());
-            }
+
+            logger.info(JSON.stringify(await bridge.setValidators(newValidators, newValidatorSetId, proof, {gasLimit: gasEstimated.addn(BUFFER)})));
+            await updateLastEventProcessed(eventId, blockHash.toString());
             const balance = await ethers.provider.getBalance(txExecutor.address);
             logger.info(`Balance is: ${balance}`);
             const gasPrice = await ethers.provider.getGasPrice();
@@ -74,10 +72,10 @@ async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, newValida
                 });
                 logger.info(`Slack notification sent ${data} and status code ${statusCode}`);
             }
+        } catch (e) {
+                logger.warn('Something went wrong:');
+                logger.error(`Error: ${e}`);
         }
-    } catch (e) {
-        logger.warn('Something went wrong:');
-        logger.error(`Error: ${e}`);
     }
 }
 
@@ -115,7 +113,6 @@ async function main (networkName, bridgeContractAddress) {
             }
             console.log(`Iterating through all unprocessed event ids from ${scanFromEvent} to ${lastEventProofIdFromCennznet}`);
             for (let i = scanFromEvent; i <=  parseInt(lastEventProofIdFromCennznet);i++ ) {
-                // const blockHash = await api.rpc.chain.getBlockHash(i);
                 console.log('At Event id:',i);
                 const eventProof = await withTimeout(api.derive.ethBridge.eventProof(i), 10000);
                 if (eventProof && eventProof.tag === 'sys:authority-change') {
@@ -145,7 +142,7 @@ async function main (networkName, bridgeContractAddress) {
                 if (section === 'ethBridge' && method === 'AuthoritySetChange') {
                     const dataFetched = data.toHuman();
                     const eventIdFound = dataFetched[0];
-                    const newValidatorSetId = parseInt(dataFetched[1]) + 1;
+                    const newValidatorSetId = parseInt(dataFetched[1]);
                     await getEventPoofAndSubmit(api, eventIdFound, bridge, txExecutor, newValidatorSetId.toString(), blockHash);
                 }
             })
