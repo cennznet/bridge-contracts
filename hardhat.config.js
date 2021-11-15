@@ -22,7 +22,11 @@ module.exports = {
       accounts: [`0x${process.env.ETH_ACCOUNT_KEY}`],
     },
     mainnet: {
-      url: `https://eth-ropsten.alchemyapi.io/v2/${process.env.MAINNET_INFURA_API_KEY}`,
+      url: `https://mainnet.infura.io/v3/${process.env.MAINNET_INFURA_API_KEY}`,
+      accounts: [`0x${process.env.ETH_ACCOUNT_KEY}`],
+    },
+    kovan: {
+      url: `https://kovan.infura.io/v3/${process.env.KOVAN_INFURA_API_KEY}`,
       accounts: [`0x${process.env.ETH_ACCOUNT_KEY}`],
     }
   },
