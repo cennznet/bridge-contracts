@@ -76,6 +76,9 @@ async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, newValida
                 logger.warn('Something went wrong:');
                 logger.error(`Error: ${e}`);
         }
+    } else if (!eventProof){
+        logger.info(`Could not retrieve event proof for event id ${eventId} from derived
+        query api.derive.ethBridge.eventProof at 20000ms timeout`);
     }
 }
 
