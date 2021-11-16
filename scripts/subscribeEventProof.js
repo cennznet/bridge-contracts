@@ -8,6 +8,7 @@ const { EventProcessed  } = require('../src/mongo/models');
 const { ethers } = require("hardhat");
 let txExecutor;
 
+const timeoutMs = 20000;
 const BUFFER = 10000000;
 // Ignore if validator public key is 0x000..
 const IGNORE_KEY = '0x000000000000000000000000000000000000000000000000000000000000000000';
@@ -34,7 +35,7 @@ async function updateLastEventProcessed(eventId, blockHash) {
 // Submit the event proof on Ethereum Bridge contract
 async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, newValidatorSetId, blockHash) {
     const eventExistsOnEth = await bridge.eventIds(eventId.toString());
-    const eventProof = await withTimeout(api.derive.ethBridge.eventProof(eventId), 20000);
+    const eventProof = await withTimeout(api.derive.ethBridge.eventProof(eventId), timeoutMs);
     if (eventProof && !eventExistsOnEth) {
         const newValidators = await extractNewValidators(api, blockHash);
         logger.info(`Sending setValidators tx with the account: ${txExecutor.address}`);
@@ -76,6 +77,9 @@ async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, newValida
                 logger.warn('Something went wrong:');
                 logger.error(`Error: ${e}`);
         }
+    } else if (!eventProof){
+        logger.info(`Could not retrieve event proof for event id ${eventId} from derived
+        query api.derive.ethBridge.eventProof at ${timeoutMs} timeout`);
     }
 }
 
