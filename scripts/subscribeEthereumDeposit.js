@@ -87,7 +87,7 @@ async function main (networkName, pegContractAddress) {
     [txExecutor] = await ethers.getSigners();
 
     const keyring = new Keyring({type: 'sr25519'});
-    const seed = hexToU8a(process.env.CENNZNET_SCERET);
+    const seed = hexToU8a(process.env.CENNZNET_SECRET);
     const claimer = keyring.addFromSeed(seed);
     console.log('CENNZnet signer address:', claimer.address);
 
