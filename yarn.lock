@@ -30,13 +30,13 @@
   dependencies:
     regenerator-runtime "^0.13.4"
 
-"@cennznet/api@^1.5.0-alpha.5":
-  version "1.5.0-alpha.5"
-  resolved "https://registry.yarnpkg.com/@cennznet/api/-/api-1.5.0-alpha.5.tgz#87593e9cbd46de7c3cc8ef92ca09bfc80794ba3d"
-  integrity sha512-T/hT7XLUkp3BvqByF8fB+bLaBA1ncSPzGivYq97exZrPPwruokNdo1cAzZKyJ5v91v0qgYGDm2YaglaHDoKkWg==
+"@cennznet/api@^1.5.0-alpha.6":
+  version "1.5.0-alpha.6"
+  resolved "https://registry.yarnpkg.com/@cennznet/api/-/api-1.5.0-alpha.6.tgz#27252c59d797812be16865653d3c2da6adbc0d7f"
+  integrity sha512-JVWObDpKqTtOLWw7A/esVR6SXyyCWhjv5wOKCHLClpB1qIxDMp5LSK9SQ2G+hf1B4nk6CbtZJ3ELvF0j9h/4EQ==
   dependencies:
-    "@cennznet/types" "^1.5.0-alpha.5"
-    "@cennznet/util" "^1.5.0-alpha.5"
+    "@cennznet/types" "^1.5.0-alpha.6"
+    "@cennznet/util" "^1.5.0-alpha.6"
     "@polkadot/api" "3.7.1"
     "@polkadot/extension-dapp" "^0.36.1"
     "@polkadot/metadata" "3.7.1"
@@ -45,10 +45,10 @@
     "@polkadot/types" "3.7.1"
     eventemitter3 "^4.0.0"
 
-"@cennznet/types@^1.5.0-alpha.5":
-  version "1.5.0-alpha.5"
-  resolved "https://registry.yarnpkg.com/@cennznet/types/-/types-1.5.0-alpha.5.tgz#506d6d58ceabae30d814932643d63c9ced535e11"
-  integrity sha512-vHyrSQSmkLtgL9ltrLg8C3DdkYZkSny4MszwV+Q8Z6x9V+9Vp+ZSO1dYkFNSU+oCfjlw0DFmo+JBNYDQOXU0Sw==
+"@cennznet/types@^1.5.0-alpha.6":
+  version "1.5.0-alpha.6"
+  resolved "https://registry.yarnpkg.com/@cennznet/types/-/types-1.5.0-alpha.6.tgz#5328e6c8a6dac0733c64198573bc38bb273716bd"
+  integrity sha512-MgyiZwXCCSRmAdwud+QxytJGYJZLgy4xl1fEtMC4ky/XK7Brp97tkbWTG9APcPj6BTPkd9ZVHBhFNA22nmsBBA==
   dependencies:
     "@polkadot/keyring" "5.9.2"
     "@polkadot/types" "3.7.1"
@@ -56,10 +56,10 @@
     "@polkadot/util-crypto" "^4.2.1"
     memoizee "^0.4.14"
 
-"@cennznet/util@^1.5.0-alpha.5":
-  version "1.5.0-alpha.5"
-  resolved "https://registry.yarnpkg.com/@cennznet/util/-/util-1.5.0-alpha.5.tgz#96d1b38b1a5814c7b83041bdbd5dc5d2fee98931"
-  integrity sha512-cghsQUtVoheVcU3m6OrJ4Zd+nyOvjCQTyv9ztLHBwrt3CL1Q/TkA0R2qklOMvdyRMLwFJNa4kr28SSNr76jLlQ==
+"@cennznet/util@^1.5.0-alpha.6":
+  version "1.5.0-alpha.6"
+  resolved "https://registry.yarnpkg.com/@cennznet/util/-/util-1.5.0-alpha.6.tgz#b6d460dce17a21612704e09549db39f46bcee1ce"
+  integrity sha512-aM2MKeQ4ikZGzZlo8Gduk8oh2CjOnBaW7DsaYjCsfF+Wj8hhkliDrI42F/T3LCPvU1U9dKv06AeEAqstfHPD2w==
   dependencies:
     "@polkadot/util" "5.9.2"
     "@polkadot/util-crypto" "5.9.2"
