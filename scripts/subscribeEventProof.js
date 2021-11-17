@@ -9,7 +9,7 @@ const { ethers } = require("hardhat");
 let txExecutor;
 
 const timeoutMs = 20000;
-const BUFFER = 10000000;
+const BUFFER = 1000;
 // Ignore if validator public key is 0x000..
 const IGNORE_KEY = '0x000000000000000000000000000000000000000000000000000000000000000000';
 
@@ -53,7 +53,7 @@ async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, newValida
         try {
             const gasEstimated = await bridge.estimateGas.setValidators(newValidators, newValidatorSetId, proof, {gasLimit: 500000});
 
-            logger.info(JSON.stringify(await bridge.setValidators(newValidators, newValidatorSetId, proof, {gasLimit: gasEstimated.addn(BUFFER)})));
+            logger.info(JSON.stringify(await bridge.setValidators(newValidators, newValidatorSetId, proof, {gasLimit: gasEstimated.add(BUFFER)})));
             await updateLastEventProcessed(eventId, blockHash.toString());
             const balance = await ethers.provider.getBalance(txExecutor.address);
             logger.info(`Balance is: ${balance}`);
