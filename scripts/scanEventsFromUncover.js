@@ -119,12 +119,21 @@ async function main (networkName, bridgeContractAddress) {
        const newValidatorSetId = jsonData[1].value;
        const blockHash = await api.rpc.chain.getBlockHash(blockNumber);
        console.log('eventProofId:',eventProofId);
-       console.log('validatorSetId:',validatorSetId);
        await getEventPoofAndSubmit(api, eventProofId, bridge, txExecutor, newValidatorSetId.toString(), blockHash);
    }));
 
 }
 
+async function withTimeout(promise, timeoutMs) {
+    return Promise.race ([
+        promise,
+        new Promise  ((resolve) => {
+            setTimeout(() => {
+                resolve(null);
+            }, timeoutMs);
+        }),
+    ]);
+}
 
 const networkName = process.env.NETWORK;
 const bridgeContractAddress = process.env.BRIDGE_CONTRACT;
