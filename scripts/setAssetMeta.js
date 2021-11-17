@@ -48,7 +48,7 @@ async function main() {
             network: process.env.NETWORK,
         });
     const keyring = new Keyring({type: 'sr25519'});
-    const alice = keyring.addFromUri(process.env.CENNZNET_SCERET);
+    const alice = keyring.addFromUri(process.env.CENNZNET_SECRET);
     http.get(url, (res) => {
     let dataQueue = "";
     res.on('data', (d) => {
