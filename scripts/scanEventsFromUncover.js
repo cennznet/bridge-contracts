@@ -103,7 +103,7 @@ async function main (networkName, bridgeContractAddress) {
 
 
     const response = await axios.get(
-        `${process.env.UNCOVER_BASEPATH}/cennznet-explorer-api/api/scan/events?moduleId=ethBridge&eventId=AuthoritySetChange&row=100&page=0`
+        `${process.env.UNCOVER_URI}/cennznet-explorer-api/api/scan/events?moduleId=ethBridge&eventId=AuthoritySetChange&row=100&page=0`
     );
     const uncoverEventsData = response.data;
     let uncoverEvents = uncoverEventsData.data;

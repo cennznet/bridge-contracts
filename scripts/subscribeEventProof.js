@@ -38,11 +38,11 @@ async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, newValida
     const eventProof = await withTimeout(api.derive.ethBridge.eventProof(eventId), timeoutMs);
     if (eventProof && !eventExistsOnEth) {
         const newValidators = await extractNewValidators(api, blockHash);
-        logger.info(`Sending setValidators tx with the account: ${txExecutor.address}`);
-        logger.info(`Parameters :::`);
-        logger.info(`newValidators:${newValidators}`);
-        logger.info(`newValidatorSetId: ${newValidatorSetId}`);
-        logger.info(`event proof::${JSON.stringify(eventProof)}`);
+        logger.info(`IMP Sending setValidators tx with the account: ${txExecutor.address}`);
+        logger.info(`IMP Parameters :::`);
+        logger.info(`IMP newValidators:${newValidators}`);
+        logger.info(`IMP newValidatorSetId: ${newValidatorSetId}`);
+        logger.info(`IMP event proof::${JSON.stringify(eventProof)}`);
         const proof = {
             eventId: eventProof.eventId,
             validatorSetId: eventProof.validatorSetId,
@@ -56,11 +56,11 @@ async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, newValida
             logger.info(JSON.stringify(await bridge.setValidators(newValidators, newValidatorSetId, proof, {gasLimit: gasEstimated.add(BUFFER)})));
             await updateLastEventProcessed(eventId, blockHash.toString());
             const balance = await ethers.provider.getBalance(txExecutor.address);
-            logger.info(`Balance is: ${balance}`);
+            logger.info(`IMP Balance is: ${balance}`);
             const gasPrice = await ethers.provider.getGasPrice();
-            logger.info(`Gas price: ${gasPrice.toString()}`);
+            logger.info(`IMP Gas price: ${gasPrice.toString()}`);
             const gasRequired = gasEstimated.mul(gasPrice);
-            logger.info(`Gas required: ${gasRequired.toString()}`);
+            logger.info(`IMP Gas required: ${gasRequired.toString()}`);
             if (balance.lt(gasRequired.mul(2))) {
                 const {statusCode, data} = await curly.post(`https://hooks.slack.com/services/${process.env.SLACK_SECRET}`, {
                     postFields: JSON.stringify({
@@ -75,10 +75,10 @@ async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, newValida
             }
         } catch (e) {
                 logger.warn('Something went wrong:');
-                logger.error(`Error: ${e}`);
+                logger.error(`IMP Error: ${e.stack}`);
         }
     } else if (!eventProof){
-        logger.info(`Could not retrieve event proof for event id ${eventId} from derived
+        logger.info(`IMP Could not retrieve event proof for event id ${eventId} from derived
         query api.derive.ethBridge.eventProof at ${timeoutMs} timeout`);
     }
 }
@@ -136,7 +136,6 @@ async function main (networkName, bridgeContractAddress) {
     await api.rpc.chain
         .subscribeFinalizedHeads(async (head) => {
             const blockNumber = head.number.toNumber();
-            logger.info(`HEALTH CHECK => OK`);
             logger.info(`At blocknumber: ${blockNumber}`);
 
             const blockHash = head.hash.toString();
@@ -147,6 +146,7 @@ async function main (networkName, bridgeContractAddress) {
                     const dataFetched = data.toHuman();
                     const eventIdFound = dataFetched[0];
                     const newValidatorSetId = parseInt(dataFetched[1]);
+                    logger.info(`IMP Event found at block ${blockNumber} hash ${blockHash} event id ${eventIdFound}`);
                     await getEventPoofAndSubmit(api, eventIdFound, bridge, txExecutor, newValidatorSetId.toString(), blockHash);
                 }
             })
