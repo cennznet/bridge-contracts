@@ -5,8 +5,8 @@ const logger = require('./logger');
 const { curly } = require("node-libcurl");
 const mongoose = require('mongoose');
 const { EventProcessed  } = require('../src/mongo/models');
-const { ethers } = require("hardhat");
-let txExecutor;
+const ethers = require('ethers');
+const { BRIDGE } = require("./abiConfig.json");
 
 const timeoutMs = 20000;
 const BUFFER = 1000;
@@ -33,7 +33,7 @@ async function updateLastEventProcessed(eventId, blockHash) {
 }
 
 // Submit the event proof on Ethereum Bridge contract
-async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, newValidatorSetId, blockHash) {
+async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, newValidatorSetId, blockHash, provider) {
     const eventExistsOnEth = await bridge.eventIds(eventId.toString());
     const eventProof = await withTimeout(api.derive.ethBridge.eventProof(eventId), timeoutMs);
     if (eventProof && !eventExistsOnEth) {
@@ -55,9 +55,9 @@ async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, newValida
 
             logger.info(JSON.stringify(await bridge.setValidators(newValidators, newValidatorSetId, proof, {gasLimit: gasEstimated.add(BUFFER)})));
             await updateLastEventProcessed(eventId, blockHash.toString());
-            const balance = await ethers.provider.getBalance(txExecutor.address);
+            const balance = await provider.getBalance(txExecutor.address);
             logger.info(`IMP Balance is: ${balance}`);
-            const gasPrice = await ethers.provider.getGasPrice();
+            const gasPrice = await provider.getGasPrice();
             logger.info(`IMP Gas price: ${gasPrice.toString()}`);
             const gasRequired = gasEstimated.mul(gasPrice);
             logger.info(`IMP Gas required: ${gasRequired.toString()}`);
@@ -91,15 +91,16 @@ async function main (networkName, bridgeContractAddress) {
 
     const api = await Api.create({network: networkName});
     logger.info(`Connect to cennznet network ${networkName}`);
-    [txExecutor] = await ethers.getSigners();
 
-    // Get the bridge instance that was deployed
-    const Bridge = await ethers.getContractFactory('CENNZnetBridge');
+    const provider = new ethers.providers.InfuraProvider(process.env.ETH_NETWORK,
+        process.env.INFURA_API_KEY
+    );
+
+    let wallet = new ethers.Wallet(process.env.ETH_ACCOUNT_KEY, provider);
+
+    const bridge = new ethers.Contract(bridgeContractAddress, BRIDGE, wallet);
     logger.info('Connecting to CENNZnet bridge contract...');
-    const bridge = await Bridge.attach(bridgeContractAddress);
-    await bridge.deployed();
     logger.info(`CENNZnet bridge deployed to: ${bridge.address}`);
-    logger.info(`Executor: ${txExecutor.address}`);
 
     // For any kind of restart, we check if the last event proof generated on CENNZnet side, has been update on Eth side
     logger.info('Check the last event proof generated on CENNZnet side, has been update on Eth side');
@@ -123,7 +124,7 @@ async function main (networkName, bridgeContractAddress) {
                     const checkEventExistsOnEth = await bridge.eventIds(i.toString());
                     if (!checkEventExistsOnEth) {
                         const newValidatorSetId = parseInt(eventProof.validatorSetId) + 1;
-                        await getEventPoofAndSubmit(api, eventProof.eventId, bridge, txExecutor, newValidatorSetId.toString(), eventProof.blockHash);
+                        await getEventPoofAndSubmit(api, eventProof.eventId, bridge, wallet, newValidatorSetId.toString(), eventProof.blockHash, provider);
                     }
                 }
             }
@@ -147,7 +148,7 @@ async function main (networkName, bridgeContractAddress) {
                     const eventIdFound = dataFetched[0];
                     const newValidatorSetId = parseInt(dataFetched[1]);
                     logger.info(`IMP Event found at block ${blockNumber} hash ${blockHash} event id ${eventIdFound}`);
-                    await getEventPoofAndSubmit(api, eventIdFound, bridge, txExecutor, newValidatorSetId.toString(), blockHash);
+                    await getEventPoofAndSubmit(api, eventIdFound, bridge, wallet, newValidatorSetId.toString(), blockHash, provider);
                 }
             })
         });

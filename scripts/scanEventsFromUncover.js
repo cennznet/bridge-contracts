@@ -5,9 +5,9 @@ const logger = require('./logger');
 const { curly } = require("node-libcurl");
 const mongoose = require('mongoose');
 const { EventProcessed  } = require('../src/mongo/models');
-const { ethers } = require("hardhat");
-let txExecutor;
+const ethers = require('ethers');
 const axios = require("axios");
+const { BRIDGE } = require("./abiConfig.json");
 const timeoutMs = 20000;
 const BUFFER = 1000;
 // Ignore if validator public key is 0x000..
@@ -33,16 +33,16 @@ async function updateLastEventProcessed(eventId, blockHash) {
 }
 
 // Submit the event proof on Ethereum Bridge contract
-async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, newValidatorSetId, blockHash) {
+async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, newValidatorSetId, blockHash, provider) {
     const eventExistsOnEth = await bridge.eventIds(eventId.toString());
     const eventProof = await withTimeout(api.derive.ethBridge.eventProof(eventId), timeoutMs);
     if (eventProof && !eventExistsOnEth) {
         const newValidators = await extractNewValidators(api, blockHash);
-        logger.info(`Sending setValidators tx with the account: ${txExecutor.address}`);
-        logger.info(`Parameters :::`);
-        logger.info(`newValidators:${newValidators}`);
-        logger.info(`newValidatorSetId: ${newValidatorSetId}`);
-        logger.info(`event proof::${JSON.stringify(eventProof)}`);
+        logger.info(`IMP Sending setValidators tx with the account: ${txExecutor.address}`);
+        logger.info(`IMP Parameters :::`);
+        logger.info(`IMP newValidators:${newValidators}`);
+        logger.info(`IMP newValidatorSetId: ${newValidatorSetId}`);
+        logger.info(`IMP event proof::${JSON.stringify(eventProof)}`);
         const proof = {
             eventId: eventProof.eventId,
             validatorSetId: eventProof.validatorSetId,
@@ -55,12 +55,12 @@ async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, newValida
 
             logger.info(JSON.stringify(await bridge.setValidators(newValidators, newValidatorSetId, proof, {gasLimit: gasEstimated.add(BUFFER)})));
             await updateLastEventProcessed(eventId, blockHash.toString());
-            const balance = await ethers.provider.getBalance(txExecutor.address);
-            logger.info(`Balance is: ${balance}`);
-            const gasPrice = await ethers.provider.getGasPrice();
-            logger.info(`Gas price: ${gasPrice.toString()}`);
+            const balance = await provider.getBalance(txExecutor.address);
+            logger.info(`IMP Balance is: ${balance}`);
+            const gasPrice = await provider.getGasPrice();
+            logger.info(`IMP Gas price: ${gasPrice.toString()}`);
             const gasRequired = gasEstimated.mul(gasPrice);
-            logger.info(`Gas required: ${gasRequired.toString()}`);
+            logger.info(`IMP Gas required: ${gasRequired.toString()}`);
             if (balance.lt(gasRequired.mul(2))) {
                 const {statusCode, data} = await curly.post(`https://hooks.slack.com/services/${process.env.SLACK_SECRET}`, {
                     postFields: JSON.stringify({
@@ -75,10 +75,10 @@ async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, newValida
             }
         } catch (e) {
             logger.warn('Something went wrong:');
-            logger.error(`Error: ${e}`);
+            logger.error(`IMP Error: ${e.stack}`);
         }
     } else if (!eventProof){
-        logger.info(`Could not retrieve event proof for event id ${eventId} from derived
+        logger.info(`IMP Could not retrieve event proof for event id ${eventId} from derived
         query api.derive.ethBridge.eventProof at ${timeoutMs} timeout`);
     }
 }
@@ -91,13 +91,14 @@ async function main (networkName, bridgeContractAddress) {
 
     const api = await Api.create({network: networkName});
     logger.info(`Connect to cennznet network ${networkName}`);
-    [txExecutor] = await ethers.getSigners();
 
-    // Get the bridge instance that was deployed
-    const Bridge = await ethers.getContractFactory('CENNZnetBridge');
-    logger.info('Connecting to CENNZnet bridge contract...');
-    const bridge = await Bridge.attach(bridgeContractAddress);
-    await bridge.deployed();
+    const provider = new ethers.providers.InfuraProvider(process.env.ETH_NETWORK,
+        process.env.INFURA_API_KEY
+    );
+
+    let wallet = new ethers.Wallet(process.env.ETH_ACCOUNT_KEY, provider);
+
+    const bridge = new ethers.Contract(bridgeContractAddress, BRIDGE, wallet);
     logger.info(`CENNZnet bridge deployed to: ${bridge.address}`);
     logger.info(`Executor: ${txExecutor.address}`);
 
@@ -119,7 +120,7 @@ async function main (networkName, bridgeContractAddress) {
        const newValidatorSetId = jsonData[1].value;
        const blockHash = await api.rpc.chain.getBlockHash(blockNumber);
        console.log('eventProofId:',eventProofId);
-       await getEventPoofAndSubmit(api, eventProofId, bridge, txExecutor, newValidatorSetId.toString(), blockHash);
+       await getEventPoofAndSubmit(api, eventProofId, bridge, wallet, newValidatorSetId.toString(), blockHash, provider);
    }));
 
 }
