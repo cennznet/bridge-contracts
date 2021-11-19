@@ -16,9 +16,9 @@
     "setAssetMetaViaJSON": "node scripts/setMetadataViaStorage.js",
     "startEthNode": "./scripts/startEthNode.sh",
     "setInitialValidators": "hardhat run scripts/forceActiveValidators.js --network $1",
-    "validatorRelayer": "hardhat run scripts/subscribeEventProof.js --network $1",
-    "scan:event": "hardhat run scripts/scanEventsFromUncover.js --network $1",
-    "claimRelayer": "hardhat run scripts/subscribeEthereumDeposit.js --network $1",
+    "validatorRelayer": "node scripts/subscribeEventProof.js",
+    "scan:event": "node scripts/scanEventsFromUncover.js",
+    "claimRelayer": "node scripts/subscribeEthereumDeposit.js",
     "publish": "npx hardhat verify --network $1 $2",
     "test": "yarn build && env TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\", \"esModuleInterop\": true, \"resolveJsonModule\": true, \"types\": [\"@types/mocha\"] }' mocha -r ts-node/register 'test/**/*.test.ts'"
   },
