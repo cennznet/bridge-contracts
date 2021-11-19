@@ -100,8 +100,6 @@ async function main (networkName, bridgeContractAddress) {
 
     const bridge = new ethers.Contract(bridgeContractAddress, BRIDGE, wallet);
     logger.info(`CENNZnet bridge deployed to: ${bridge.address}`);
-    logger.info(`Executor: ${txExecutor.address}`);
-
 
     const response = await axios.get(
         `${process.env.UNCOVER_URI}/cennznet-explorer-api/api/scan/events?moduleId=ethBridge&eventId=AuthoritySetChange&row=100&page=0`
