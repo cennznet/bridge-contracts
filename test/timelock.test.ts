@@ -43,25 +43,34 @@ describe('Timelock', () => {
     let blockNumAfter = await ethers.provider.getBlockNumber();
     let blockAfter = await ethers.provider.getBlock(blockNumAfter);
     let timestampAfter = blockAfter.timestamp;
+    console.log('timestampAfter::',timestampAfter);
 
     let eta = new BigNumber(timestampAfter).plus(delay).plus(new BigNumber(1));
 
-    let queuedTxHash = keccak256(
-      abi.encode(
-        ['address', 'uint256', 'string', 'bytes', 'uint256'],
-        [bridge.address, 0, signature, encodedParams, eta.toString()]
-      )
-    );
 
     await timeLock.queueTransaction(bridge.address, 0, signature, encodedParams, eta.toString());
+    
+    await hre.network.provider.send("evm_setNextBlockTimestamp", [eta.toNumber()]);
+    await hre.network.provider.send('evm_mine', []);
     blockNumAfter = await ethers.provider.getBlockNumber();
     blockAfter = await ethers.provider.getBlock(blockNumAfter);
     timestampAfter = blockAfter.timestamp;
-    await hre.network.provider.send("evm_setNextBlockTimestamp", [new BigNumber(timestampAfter).plus(delay).plus(2).toNumber()])
-    await timeLock.executeTransaction(bridge.address, 0, signature, encodedParams, eta.toString(), {
-      // Prevents error: 'cannot estimate gas; transaction may fail or may require manual gas limit'
-      gasLimit: 100000});
+    console.log('timestampAfter::',timestampAfter);
+    console.log('eta::', eta.toString());
 
+    
+    try {
+      await timeLock.executeTransaction(bridge.address, 0, signature, encodedParams, eta.toString(), {
+        // Prevents error: 'cannot estimate gas; transaction may fail or may require manual gas limit'
+        gasLimit: 100000
+      });
+    } catch (e) {
+      console.log('Err:',e);
+      blockNumAfter = await ethers.provider.getBlockNumber();
+      blockAfter = await ethers.provider.getBlock(blockNumAfter);
+      timestampAfter = blockAfter.timestamp;
+      console.log('timestampAfter::',timestampAfter);
+    }
     await expect(bridge.maxRewardPayout === newMaxRewardPayout);
   });
 
