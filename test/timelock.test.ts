@@ -26,7 +26,7 @@ describe('Timelock', () => {
   let abi = new ethers.utils.AbiCoder();
 
   beforeEach(async () => {
-    timeLock = await deployContract(wallet, Timelock, [wallet.address, minimumDelay.toString()]);
+    timeLock = await deployContract(wallet, Timelock, [wallet.address, minimumDelay.toNumber()]);
     bridge = await deployContract(wallet, CENNZnetBridge, []);
     await setTime(initialBlockTimestamp);
     await bridge.transferOwnership(timeLock.address);
@@ -36,7 +36,7 @@ describe('Timelock', () => {
     let delay = minimumDelay;
     let newMaxRewardPayout = new BigNumber('12345789');
     let signature = 'setMaxRewardPayout(uint)';
-    let encodedParams = abi.encode(['uint'], [newMaxRewardPayout.toString()]);
+    let encodedParams = abi.encode(['uint'], [newMaxRewardPayout.toNumber()]);
     let eta = initialBlockTimestamp.plus(delay).plus(new BigNumber(1));
 
     let queuedTxHash = keccak256(
