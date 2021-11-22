@@ -10,7 +10,7 @@ import { keccak256 } from '@ethersproject/keccak256';
 use(solidity);
 
 async function setTime(seconds: BigNumber) {
-  await hre.network.provider.send('evm_increaseTime', [seconds.toString()]);
+  await hre.network.provider.send('evm_increaseTime', [seconds.toNumber()]);
   await hre.network.provider.send('evm_mine', []);
 }
 
