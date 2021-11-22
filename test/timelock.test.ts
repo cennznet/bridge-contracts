@@ -3,11 +3,7 @@ import hre from 'hardhat';
 import { Contract, utils } from 'ethers';
 const { ethers } = require('hardhat');
 import { BigNumber } from 'bignumber.js';
-import { deployContract, MockProvider, solidity } from 'ethereum-waffle';
-// @ts-ignore
-import Timelock from '../artifacts/contracts/Timelock.sol/Timelock.json';
-// @ts-ignore
-import CENNZnetBridge from '../artifacts/contracts/CENNZnetBridge.sol/CENNZnetBridge.json';
+import { solidity } from 'ethereum-waffle';
 
 use(solidity);
 
@@ -60,8 +56,14 @@ describe('Timelock', () => {
     await timeLock.queueTransaction(bridge.address, 0, signature, encodedParams, eta.toNumber());
 
 
-    await ethers.provider.send('evm_setNextBlockTimestamp', [eta.plus(1).toNumber()]);
-    await ethers.provider.send('evm_mine');
+    // await ethers.provider.send('evm_setNextBlockTimestamp', [eta.plus(1).toNumber()]);
+    // await ethers.provider.send('evm_mine');
+
+
+    // with this the next block timestamp becomes
+    // Get block timestamp is 1638988095 eta is 1637873647
+    // Get eta.add(GRACE_PERIOD) is 1639083247
+    await setTime(eta.minus(1636500000));
     blockNumAfter = await ethers.provider.getBlockNumber();
     blockAfter = await ethers.provider.getBlock(blockNumAfter);
     timestampAfter = blockAfter.timestamp;
@@ -73,7 +75,7 @@ describe('Timelock', () => {
     });
     const payout = await bridge.maxRewardPayout();
     console.log('Payout::',payout.toString());
-    await expect(payout.toString()).equal(newMaxRewardPayout.toString())//.toE === newMaxRewardPayout);
+    await expect(payout.toString()).equal(newMaxRewardPayout.toString());
   });
 
 })
