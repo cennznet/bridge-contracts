@@ -9,7 +9,8 @@ const fastify = Fastify({
 fastify.register(mongoConnector)
 fastify.register(bridge)
 
-fastify.listen(3000, function (err) {
+// To listen on all available IPv4 interfaces this should be modified to listen on 0.0.0.0
+fastify.listen(3000, '0.0.0.0', function (err) {
   if (err) {
     fastify.log.error(err)
     process.exit(1)
