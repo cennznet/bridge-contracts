@@ -43,7 +43,7 @@ describe('Timelock', () => {
     const blockAfter = await ethers.provider.getBlock(blockNumAfter);
     const timestampAfter = blockAfter.timestamp;
 
-    let eta = timestampAfter.plus(delay).plus(new BigNumber(1));
+    let eta = new BigNumber(timestampAfter).plus(delay).plus(new BigNumber(1));
 
     let queuedTxHash = keccak256(
       abi.encode(
