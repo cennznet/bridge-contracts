@@ -1,6 +1,7 @@
 import { expect, use } from 'chai';
 import hre from 'hardhat';
-import { Contract, ethers, utils } from 'ethers';
+import { Contract, utils } from 'ethers';
+const { ethers } = require('hardhat');
 import { BigNumber } from 'bignumber.js';
 import { deployContract, MockProvider, solidity } from 'ethereum-waffle';
 import Timelock from '../artifacts/contracts/Timelock.sol/Timelock.json';
@@ -37,7 +38,12 @@ describe('Timelock', () => {
     let newMaxRewardPayout = new BigNumber('12345789');
     let signature = 'setMaxRewardPayout(uint)';
     let encodedParams = abi.encode(['uint'], [newMaxRewardPayout.toNumber()]);
-    let eta = initialBlockTimestamp.plus(delay).plus(new BigNumber(1));
+    // let eta = initialBlockTimestamp.plus(delay).plus(new BigNumber(1));
+    const blockNumAfter = await ethers.provider.getBlockNumber();
+    const blockAfter = await ethers.provider.getBlock(blockNumAfter);
+    const timestampAfter = blockAfter.timestamp;
+
+    let eta = timestampAfter.plus(delay).plus(new BigNumber(1));
 
     let queuedTxHash = keccak256(
       abi.encode(
@@ -46,9 +52,9 @@ describe('Timelock', () => {
       )
     );
 
-    await timeLock.queueTransaction(bridge.address, 0, signature, encodedParams, eta.toString());
+    await timeLock.queueTransaction(bridge.address, 0, signature, encodedParams, eta);
     await setTime(delay.plus(1));
-    await timeLock.executeTransaction(bridge.address, 0, signature, encodedParams, eta.toString());
+    await timeLock.executeTransaction(bridge.address, 0, signature, encodedParams, eta);
 
     await expect(bridge.maxRewardPayout === newMaxRewardPayout);
   });
