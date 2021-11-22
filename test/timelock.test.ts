@@ -8,7 +8,6 @@ import { deployContract, MockProvider, solidity } from 'ethereum-waffle';
 import Timelock from '../artifacts/contracts/Timelock.sol/Timelock.json';
 // @ts-ignore
 import CENNZnetBridge from '../artifacts/contracts/CENNZnetBridge.sol/CENNZnetBridge.json';
-import { keccak256 } from '@ethersproject/keccak256';
 
 use(solidity);
 
@@ -18,7 +17,6 @@ async function setTime(seconds: BigNumber) {
 }
 
 describe('Timelock', () => {
-  const [wallet, walletTo] = new MockProvider().getWallets();
   let bridge: Contract;
   let timeLock: Contract;
   let threeDays = new BigNumber(86400 * 3);
@@ -29,15 +27,25 @@ describe('Timelock', () => {
   let abi = new ethers.utils.AbiCoder();
 
   beforeEach(async () => {
-    timeLock = await deployContract(wallet, Timelock, [wallet.address, minimumDelay.toNumber()]);
-    bridge = await deployContract(wallet, CENNZnetBridge, []);
+    const [deployer] = await ethers.getSigners();
+
+    const Bridge = await ethers.getContractFactory('CENNZnetBridge');
+    console.log('Deploying CENNZnet bridge contract...');
+    bridge = await Bridge.deploy();
+    await bridge.deployed();
+
+    const TimeLock = await ethers.getContractFactory('Timelock');
+    console.log('Deploying CENNZnet bridge contract...');
+    timeLock = await TimeLock.deploy(deployer.address, minimumDelay.toNumber());
+    await timeLock.deployed();
+    console.log('timeLock deployed to:', timeLock.address);
     await setTime(initialBlockTimestamp);
     await bridge.transferOwnership(timeLock.address);
   });
 
   it('issues a function w delay', async () => {
     let delay = minimumDelay;
-    let newMaxRewardPayout = new BigNumber('12345789');
+    let newMaxRewardPayout = new BigNumber('52345789');
     let signature = 'setMaxRewardPayout(uint256)';
     let encodedParams = abi.encode(['uint256'], [newMaxRewardPayout.toString()]);
     let blockNumAfter = await ethers.provider.getBlockNumber();
@@ -47,30 +55,22 @@ describe('Timelock', () => {
 
     let eta = new BigNumber(timestampAfter).plus(delay).plus(new BigNumber(1));
 
+    console.log('eta:::',eta.toString());
 
-    await timeLock.queueTransaction(bridge.address, 0, signature, encodedParams, eta.toString());
+    await timeLock.queueTransaction(bridge.address, 0, signature, encodedParams, eta.toNumber());
 
-    await hre.network.provider.send("evm_setNextBlockTimestamp", [eta.toNumber()]);
-    await hre.network.provider.send('evm_mine', []);
+
+    await ethers.provider.send('evm_setNextBlockTimestamp', [eta.plus(1).toNumber()]);
+    await ethers.provider.send('evm_mine');
     blockNumAfter = await ethers.provider.getBlockNumber();
     blockAfter = await ethers.provider.getBlock(blockNumAfter);
     timestampAfter = blockAfter.timestamp;
     console.log('timestampAfter::',timestampAfter);
     console.log('eta::', eta.toString());
-
-
-    try {
-      await timeLock.executeTransaction(bridge.address, 0, signature, encodedParams, eta.toString(), {
-        // Prevents error: 'cannot estimate gas; transaction may fail or may require manual gas limit'
-        gasLimit: 100000
-      });
-    } catch (e) {
-      console.log('Err:',e);
-      blockNumAfter = await ethers.provider.getBlockNumber();
-      blockAfter = await ethers.provider.getBlock(blockNumAfter);
-      timestampAfter = blockAfter.timestamp;
-      console.log('timestampAfter::',timestampAfter);
-    }
+    await timeLock.executeTransaction(bridge.address, 0, signature, encodedParams, eta.toNumber(), {
+      // Prevents error: 'cannot estimate gas; transaction may fail or may require manual gas limit'
+      gasLimit: 100000
+    });
     const payout = await bridge.maxRewardPayout();
     console.log('Payout::',payout.toString());
     await expect(payout.toString()).equal(newMaxRewardPayout.toString())//.toE === newMaxRewardPayout);
