@@ -49,7 +49,7 @@ describe('Timelock', () => {
 
 
     await timeLock.queueTransaction(bridge.address, 0, signature, encodedParams, eta.toString());
-    
+
     await hre.network.provider.send("evm_setNextBlockTimestamp", [eta.toNumber()]);
     await hre.network.provider.send('evm_mine', []);
     blockNumAfter = await ethers.provider.getBlockNumber();
@@ -58,7 +58,7 @@ describe('Timelock', () => {
     console.log('timestampAfter::',timestampAfter);
     console.log('eta::', eta.toString());
 
-    
+
     try {
       await timeLock.executeTransaction(bridge.address, 0, signature, encodedParams, eta.toString(), {
         // Prevents error: 'cannot estimate gas; transaction may fail or may require manual gas limit'
@@ -71,7 +71,9 @@ describe('Timelock', () => {
       timestampAfter = blockAfter.timestamp;
       console.log('timestampAfter::',timestampAfter);
     }
-    await expect(bridge.maxRewardPayout === newMaxRewardPayout);
+    const payout = await bridge.maxRewardPayout();
+    console.log('Payout::',payout.toString());
+    await expect(payout.toString()).equal(newMaxRewardPayout.toString())//.toE === newMaxRewardPayout);
   });
 
 })
