@@ -6,8 +6,8 @@ const { curly } = require("node-libcurl");
 const mongoose = require('mongoose');
 const { EventProcessed  } = require('../src/mongo/models');
 const ethers = require('ethers');
+const axios = require("axios");
 const { BRIDGE } = require("./abiConfig.json");
-
 const timeoutMs = 20000;
 const BUFFER = 1000;
 // Ignore if validator public key is 0x000..
@@ -74,8 +74,8 @@ async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, newValida
                 logger.info(`Slack notification sent ${data} and status code ${statusCode}`);
             }
         } catch (e) {
-                logger.warn('Something went wrong:');
-                logger.error(`IMP Error: ${e.stack}`);
+            logger.warn('Something went wrong:');
+            logger.error(`IMP Error: ${e.stack}`);
         }
     } else if (!eventProof){
         logger.info(`IMP Could not retrieve event proof for event id ${eventId} from derived
@@ -99,59 +99,28 @@ async function main (networkName, bridgeContractAddress) {
     let wallet = new ethers.Wallet(process.env.ETH_ACCOUNT_KEY, provider);
 
     const bridge = new ethers.Contract(bridgeContractAddress, BRIDGE, wallet);
-    logger.info('Connecting to CENNZnet bridge contract...');
     logger.info(`CENNZnet bridge deployed to: ${bridge.address}`);
 
-    // For any kind of restart, we check if the last event proof generated on CENNZnet side, has been update on Eth side
-    logger.info('Check the last event proof generated on CENNZnet side, has been update on Eth side');
-    const lastEventProofIdFromCennznet = await api.query.ethBridge.notarySetProofId();
-    logger.info(`lastEventProofIdFromCennznet: ${lastEventProofIdFromCennznet.toString()}`);
-    const eventExistsOnEth = await bridge.eventIds(lastEventProofIdFromCennznet.toString());
-    logger.info(`eventExists on Ethereum: ${eventExistsOnEth}`);
-    try {
-        // check if event proof exist on Eth for last event proof id of CENNZnet
-        if (!eventExistsOnEth) {
-            const lastEventProcessed = await EventProcessed.findOne();
-            let scanFromEvent = parseInt(lastEventProofIdFromCennznet);
-            if (lastEventProcessed) {
-                scanFromEvent = parseInt(lastEventProcessed.eventId) + 1;
-            }
-            console.log(`Iterating through all unprocessed event ids from ${scanFromEvent} to ${lastEventProofIdFromCennznet}`);
-            for (let i = scanFromEvent; i <=  parseInt(lastEventProofIdFromCennznet);i++ ) {
-                console.log('At Event id:',i);
-                const eventProof = await withTimeout(api.derive.ethBridge.eventProof(i), 10000);
-                if (eventProof && eventProof.tag === 'sys:authority-change') {
-                    const checkEventExistsOnEth = await bridge.eventIds(i.toString());
-                    if (!checkEventExistsOnEth) {
-                        const newValidatorSetId = parseInt(eventProof.validatorSetId) + 1;
-                        await getEventPoofAndSubmit(api, eventProof.eventId, bridge, wallet, newValidatorSetId.toString(), eventProof.blockHash, provider);
-                    }
-                }
-            }
-        }
-    } catch (e) {
-        logger.warn('Something went wrong while setting last event proof generated on CENNZnet side:');
-        logger.error(`Error: ${e}`);
-    }
+    const response = await axios.get(
+        `${process.env.UNCOVER_URI}/cennznet-explorer-api/api/scan/events?moduleId=ethBridge&eventId=AuthoritySetChange&row=100&page=0`
+    );
+    const uncoverEventsData = response.data;
+    let uncoverEvents = uncoverEventsData.data;
+    console.log('data::',uncoverEvents);
+    uncoverEvents.sort((a,b) => (a.block_num > b.block_num) ? 1 : ((b.block_num > a.block_num) ? -1 : 0));
 
-    await api.rpc.chain
-        .subscribeFinalizedHeads(async (head) => {
-            const blockNumber = head.number.toNumber();
-            logger.info(`At blocknumber: ${blockNumber}`);
+  await Promise.all(
+   uncoverEvents.map(async (event) => {
+       const blockNumber = event.block_num;
+       console.log('block number:', blockNumber);
+       const jsonData = JSON.parse(event.params);
+       const eventProofId = jsonData[0].value;
+       const newValidatorSetId = jsonData[1].value;
+       const blockHash = await api.rpc.chain.getBlockHash(blockNumber);
+       console.log('eventProofId:',eventProofId);
+       await getEventPoofAndSubmit(api, eventProofId, bridge, wallet, newValidatorSetId.toString(), blockHash, provider);
+   }));
 
-            const blockHash = head.hash.toString();
-            const events = await api.query.system.events.at(blockHash);
-            events.map(async ({event}) => {
-                const { section, method, data } = event;
-                if (section === 'ethBridge' && method === 'AuthoritySetChange') {
-                    const dataFetched = data.toHuman();
-                    const eventIdFound = dataFetched[0];
-                    const newValidatorSetId = parseInt(dataFetched[1]);
-                    logger.info(`IMP Event found at block ${blockNumber} hash ${blockHash} event id ${eventIdFound}`);
-                    await getEventPoofAndSubmit(api, eventIdFound, bridge, wallet, newValidatorSetId.toString(), blockHash, provider);
-                }
-            })
-        });
 }
 
 async function withTimeout(promise, timeoutMs) {

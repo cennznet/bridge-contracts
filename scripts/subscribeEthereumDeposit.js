@@ -5,13 +5,13 @@ const { Keyring } = require('@polkadot/keyring');
 const logger = require('./logger');
 const mongoose = require('mongoose');
 const { BridgeClaim  } = require('../src/mongo/models');
-const { ethers } = require("hardhat");
-let txExecutor;
+const ethers = require('ethers');
 const { curly } = require("node-libcurl");
 const { hexToU8a } = require("@cennznet/util");
-
+const { PEG } = require("./abiConfig.json");
 const airDropAmount = 50000;
 
+console.log('abi::',PEG);
 async function airDrop(claimId, signer, api, spendingAssetId, nonce) {
     const signerBalance = await api.query.genericAsset.freeBalance(spendingAssetId, signer.address);
     if (signerBalance.toNumber() > airDropAmount) {
@@ -49,7 +49,7 @@ async function updateClaimInDB(claimId, status) {
     const update = { status: status };
     const options = { upsert: true, new: true, setDefaultsOnInsert: true }; // create new if record does not exist, else update
     await BridgeClaim.updateOne(filter, update, options);
-    logger.info(`Updated the bridge status SUCCESSFUL for claimId: ${claimId}`);
+    logger.info(`Updated the bridge status ${status} for claimId: ${claimId}`);
 }
 
 async function sendClaim(claim, transactionHash, api, signer, nonce) {
@@ -84,25 +84,26 @@ async function main (networkName, pegContractAddress) {
 
     const api = await Api.create({network: networkName});
     logger.info(`Connect to cennznet network ${networkName}`);
-    [txExecutor] = await ethers.getSigners();
+
+    const provider = new ethers.providers.InfuraProvider(process.env.ETH_NETWORK,
+        process.env.INFURA_API_KEY
+    );
 
     const keyring = new Keyring({type: 'sr25519'});
-    const seed = hexToU8a(process.env.CENNZNET_SCERET);
+    const seed = hexToU8a(process.env.CENNZNET_SECRET);
     const claimer = keyring.addFromSeed(seed);
     console.log('CENNZnet signer address:', claimer.address);
 
     const spendingAssetId = await api.query.genericAsset.spendingAssetId();
 
-    // Get the bridge instance that was deployed
-    const Peg = await ethers.getContractFactory('ERC20Peg');
+    const peg = new ethers.Contract(pegContractAddress, PEG, provider);
     logger.info('Connecting to CENNZnet peg contract...');
-    const peg = await Peg.attach(pegContractAddress);
-    await peg.deployed();
     logger.info(`CENNZnet peg deployed to: ${peg.address}`);
-    logger.info(`Executor: ${txExecutor.address}`);
     const eventConfirmation = (await api.query.ethBridge.eventConfirmations()).toNumber();
     console.log('eventConfirmation::',eventConfirmation);
+
     peg.on("Deposit", async (sender, tokenAddress, amount, cennznetAddress, eventInfo) => {
+        logger.info(`Got the event...${eventInfo}`);
         const checkIfBridgePause = await api.query.ethBridge.bridgePaused();
         if (!checkIfBridgePause.toHuman()) {
             await updateTxStatusInDB('EthereumConfirming', eventInfo.transactionHash, null, cennznetAddress);

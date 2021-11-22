@@ -34,6 +34,15 @@ Deploying TestToken contract...
 TestToken deployed to: 0xe178481d8268767F37A9060329187dfbC55b18Ff
 ```
 
+## Kovan
+```bash
+CENNZnet bridge deployed to: 0x9AFe4E42d8ab681d402e8548Ee860635BaA952C5
+Deploying ERC20Peg contract...
+CENNZnet erc20peg deployed to: 0x5Ff2f9582FcA1e11d47e4e623BEf4594EB12b30d
+Deploying TestToken contract...
+TestToken deployed to: 0x5566CD1D85056c8F1e30cE05161d06645933564c
+```
+
 ## Publish contract
 ```bash
 yarn publish CONTRACT_ADDRESS ARGS
@@ -53,7 +62,7 @@ docker run -e MONGO_URI="mongo+srv://<username>:<password>/bridgeDb" \
            -e CENNZNET_SECRET="0x12312321 | //<uri>" \
            -e SLACK_SECRET="......" \
            -e ETH_ACCOUNT_KEY="0x..." \
-           cennznet/bridge-relayer yarn run claimRelayer
+           cennznet/bridge-relayer yarn run claimRelayer ropsten|kovan|mainnet
 
 # validator set relayer
 docker run \
@@ -61,7 +70,7 @@ docker run \
     -e BRIDGE_CONTRACT="0x123123....." \
     -e CENNZNET_SECRET="0x12312321 | //<uri>" \
     -e SLACK_SECRET="...." \
-    cennznet/bridge-relayer yarn run validatorRelayer
+    cennznet/bridge-relayer yarn run validatorRelayer ropsten|kovan|mainnet
 ```
 
 ## Setup
