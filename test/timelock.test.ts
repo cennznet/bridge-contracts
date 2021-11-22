@@ -4,7 +4,9 @@ import { Contract, utils } from 'ethers';
 const { ethers } = require('hardhat');
 import { BigNumber } from 'bignumber.js';
 import { deployContract, MockProvider, solidity } from 'ethereum-waffle';
+// @ts-ignore
 import Timelock from '../artifacts/contracts/Timelock.sol/Timelock.json';
+// @ts-ignore
 import CENNZnetBridge from '../artifacts/contracts/CENNZnetBridge.sol/CENNZnetBridge.json';
 import { keccak256 } from '@ethersproject/keccak256';
 
@@ -36,12 +38,11 @@ describe('Timelock', () => {
   it('issues a function w delay', async () => {
     let delay = minimumDelay;
     let newMaxRewardPayout = new BigNumber('12345789');
-    let signature = 'setMaxRewardPayout(uint)';
-    let encodedParams = abi.encode(['uint'], [newMaxRewardPayout.toNumber()]);
-    // let eta = initialBlockTimestamp.plus(delay).plus(new BigNumber(1));
-    const blockNumAfter = await ethers.provider.getBlockNumber();
-    const blockAfter = await ethers.provider.getBlock(blockNumAfter);
-    const timestampAfter = blockAfter.timestamp;
+    let signature = 'setMaxRewardPayout(uint256)';
+    let encodedParams = abi.encode(['uint256'], [newMaxRewardPayout.toString()]);
+    let blockNumAfter = await ethers.provider.getBlockNumber();
+    let blockAfter = await ethers.provider.getBlock(blockNumAfter);
+    let timestampAfter = blockAfter.timestamp;
 
     let eta = new BigNumber(timestampAfter).plus(delay).plus(new BigNumber(1));
 
@@ -52,9 +53,14 @@ describe('Timelock', () => {
       )
     );
 
-    await timeLock.queueTransaction(bridge.address, 0, signature, encodedParams, eta);
-    await setTime(delay.plus(1));
-    await timeLock.executeTransaction(bridge.address, 0, signature, encodedParams, eta);
+    await timeLock.queueTransaction(bridge.address, 0, signature, encodedParams, eta.toString());
+    blockNumAfter = await ethers.provider.getBlockNumber();
+    blockAfter = await ethers.provider.getBlock(blockNumAfter);
+    timestampAfter = blockAfter.timestamp;
+    await hre.network.provider.send("evm_setNextBlockTimestamp", [new BigNumber(timestampAfter).plus(delay).plus(2).toNumber()])
+    await timeLock.executeTransaction(bridge.address, 0, signature, encodedParams, eta.toString(), {
+      // Prevents error: 'cannot estimate gas; transaction may fail or may require manual gas limit'
+      gasLimit: 100000});
 
     await expect(bridge.maxRewardPayout === newMaxRewardPayout);
   });
