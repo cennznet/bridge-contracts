@@ -78,5 +78,50 @@ describe('Timelock', () => {
     await expect(payout.toString()).equal(newMaxRewardPayout.toString());
   });
 
+  it('issues a force active validator set function w delay', async () => {
+    let delay = minimumDelay;
+
+    let validatorSetId = 1;
+
+    // Public Key from CENNZnet: 0x0204dad6fc9c291c68498de501c6d6d17bfe28aee69cfbf71b2cc849caafcb0159
+    let validatorPublicKey = '0x0204dad6fc9c291c68498de501c6d6d17bfe28aee69cfbf71b2cc849caafcb0159';
+    let validatorAddress = utils.computeAddress(validatorPublicKey);
+
+    let signature = 'forceActiveValidatorSet(address[],uint32)';
+    // 'Alice' default CENNZnet ECDSA public key converted to Eth address
+    const addressArr = [validatorAddress];
+    console.log('addressArr::', addressArr);
+    let encodedParams = abi.encode(['address[]', 'uint32'], [addressArr, validatorSetId]);
+    console.log('Encoded params:', encodedParams);
+    let decode = abi.decode(['address[]', 'uint32'], encodedParams);
+    console.log('Decoded params:', decode);
+    let blockNumAfter = await ethers.provider.getBlockNumber();
+    let blockAfter = await ethers.provider.getBlock(blockNumAfter);
+    let timestampAfter = blockAfter.timestamp;
+    console.log('timestampAfter::',timestampAfter);
+
+    let eta = new BigNumber(timestampAfter).plus(delay).plus(new BigNumber(1));
+
+    console.log('eta:::',eta.toString());
+    await timeLock.queueTransaction(bridge.address, 0, signature, encodedParams, eta.toNumber());
+
+    await setTime(eta.minus(1636500000));
+    blockNumAfter = await ethers.provider.getBlockNumber();
+    blockAfter = await ethers.provider.getBlock(blockNumAfter);
+    timestampAfter = blockAfter.timestamp;
+    console.log('timestampAfter::',timestampAfter);
+    console.log('eta::', eta.toString());
+    await timeLock.executeTransaction(bridge.address, 0, signature, encodedParams, eta.toNumber(), {
+      // Prevents error: 'cannot estimate gas; transaction may fail or may require manual gas limit'
+      gasLimit: 100000
+    });
+    const activeValidatorSetId = await bridge.activeValidatorSetId();
+    console.log('activeValidatorSetId::',activeValidatorSetId.toString());
+    await expect(activeValidatorSetId.toString()).equal(validatorSetId.toString());
+    const validators = await bridge.validators[activeValidatorSetId];
+    console.log('Validators::', validators);
+    console.log('addressArr::', addressArr);
+  });
+
 })
 ;
