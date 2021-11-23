@@ -113,7 +113,7 @@ describe('Timelock', () => {
     console.log('eta::', eta.toString());
     await timeLock.executeTransaction(bridge.address, 0, signature, encodedParams, eta.toNumber(), {
       // Prevents error: 'cannot estimate gas; transaction may fail or may require manual gas limit'
-      gasLimit: 100000
+      gasLimit: 1000000
     });
     const activeValidatorSetId = await bridge.activeValidatorSetId();
     console.log('activeValidatorSetId::',activeValidatorSetId.toString());
