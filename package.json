@@ -62,6 +62,7 @@
     "eslint": "^7.32.0",
     "ethers": "^5.4.6",
     "fastify": "^3.22.0",
+    "fastify-cors": "^6.0.2",
     "fastify-mongodb": "^4.1.0",
     "fastify-plugin": "^3.0.0",
     "hardhat": "^2.4.3",
