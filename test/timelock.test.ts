@@ -105,7 +105,7 @@ describe('Timelock', () => {
     console.log('eta:::',eta.toString());
     await timeLock.queueTransaction(bridge.address, 0, signature, encodedParams, eta.toNumber());
 
-    await setTime(eta.minus(1636500000));
+    await setTime(eta.minus(1637900000));
     blockNumAfter = await ethers.provider.getBlockNumber();
     blockAfter = await ethers.provider.getBlock(blockNumAfter);
     timestampAfter = blockAfter.timestamp;
