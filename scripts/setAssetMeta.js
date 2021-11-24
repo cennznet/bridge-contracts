@@ -42,7 +42,7 @@ async function verifyMeta(api, listOfTokens) {
 // Pull uniswap tokens detail and push them to cennznet
 async function main() {
     const url = 'https://gateway.ipfs.io/ipns/tokens.uniswap.org'; // download all tokens form uniswap
-    console.log('process.env.NETWORK:::',process.env.NETWORK);
+    console.log('process.env.NETWORK:::', process.env.NETWORK);
     const api = await Api.create(
         {
             network: process.env.NETWORK,
