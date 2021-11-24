@@ -74,8 +74,8 @@ async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, newValida
                 logger.info(`Slack notification sent ${data} and status code ${statusCode}`);
             }
         } catch (e) {
-                logger.warn('Something went wrong:');
-                logger.error(`IMP Error: ${e.stack}`);
+            logger.warn('Something went wrong:');
+            logger.error(`IMP Error: ${e.stack}`);
         }
     } else if (!eventProof){
         logger.info(`IMP Could not retrieve event proof for event id ${eventId} from derived
@@ -89,18 +89,20 @@ async function main (networkName, bridgeContractAddress) {
     const connectionStr = process.env.MONGO_URI;
     await mongoose.connect(connectionStr);
 
-    const provider = process.env.WS_PROVIDER;
-    logger.info('Provider::', provider);
-    const api = provider ? await Api.create({provider}): await Api.create({network: networkName});
+    const api = await Api.create({network: networkName});
     logger.info(`Connect to cennznet network ${networkName}`);
 
-    const infuraProvider = new ethers.providers.InfuraProvider(process.env.ETH_NETWORK,
+    const provider = new ethers.providers.InfuraProvider(process.env.ETH_NETWORK,
         process.env.INFURA_API_KEY
     );
 
-    let wallet = new ethers.Wallet(process.env.ETH_ACCOUNT_KEY, infuraProvider);
+    let wallet = new ethers.Wallet(process.env.ETH_ACCOUNT_KEY, provider);
 
     const bridge = new ethers.Contract(bridgeContractAddress, BRIDGE, wallet);
+    logger.info('Connecting to CENNZnet bridge contract...');
+    logger.info(`CENNZnet bridge deployed to: ${bridge.address}`);
+
+    const timeLock = new ethers.Contract(bridgeContractAddress, BRIDGE, wallet);
     logger.info('Connecting to CENNZnet bridge contract...');
     logger.info(`CENNZnet bridge deployed to: ${bridge.address}`);
 
@@ -126,7 +128,7 @@ async function main (networkName, bridgeContractAddress) {
                     const checkEventExistsOnEth = await bridge.eventIds(i.toString());
                     if (!checkEventExistsOnEth) {
                         const newValidatorSetId = parseInt(eventProof.validatorSetId) + 1;
-                        await getEventPoofAndSubmit(api, eventProof.eventId, bridge, wallet, newValidatorSetId.toString(), eventProof.blockHash, infuraProvider);
+                        await getEventPoofAndSubmit(api, eventProof.eventId, bridge, wallet, newValidatorSetId.toString(), eventProof.blockHash, provider);
                     }
                 }
             }
@@ -150,7 +152,7 @@ async function main (networkName, bridgeContractAddress) {
                     const eventIdFound = dataFetched[0];
                     const newValidatorSetId = parseInt(dataFetched[1]);
                     logger.info(`IMP Event found at block ${blockNumber} hash ${blockHash} event id ${eventIdFound}`);
-                    await getEventPoofAndSubmit(api, eventIdFound, bridge, wallet, newValidatorSetId.toString(), blockHash, infuraProvider);
+                    await getEventPoofAndSubmit(api, eventIdFound, bridge, wallet, newValidatorSetId.toString(), blockHash, provider);
                 }
             })
         });
