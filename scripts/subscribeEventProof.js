@@ -89,14 +89,16 @@ async function main (networkName, bridgeContractAddress) {
     const connectionStr = process.env.MONGO_URI;
     await mongoose.connect(connectionStr);
 
-    const api = await Api.create({network: networkName});
+    const provider = process.env.WS_PROVIDER;
+    logger.info('Provider::', provider);
+    const api = provider ? await Api.create({provider}): await Api.create({network: networkName});
     logger.info(`Connect to cennznet network ${networkName}`);
 
-    const provider = new ethers.providers.InfuraProvider(process.env.ETH_NETWORK,
+    const infuraProvider = new ethers.providers.InfuraProvider(process.env.ETH_NETWORK,
         process.env.INFURA_API_KEY
     );
 
-    let wallet = new ethers.Wallet(process.env.ETH_ACCOUNT_KEY, provider);
+    let wallet = new ethers.Wallet(process.env.ETH_ACCOUNT_KEY, infuraProvider);
 
     const bridge = new ethers.Contract(bridgeContractAddress, BRIDGE, wallet);
     logger.info('Connecting to CENNZnet bridge contract...');
@@ -124,7 +126,7 @@ async function main (networkName, bridgeContractAddress) {
                     const checkEventExistsOnEth = await bridge.eventIds(i.toString());
                     if (!checkEventExistsOnEth) {
                         const newValidatorSetId = parseInt(eventProof.validatorSetId) + 1;
-                        await getEventPoofAndSubmit(api, eventProof.eventId, bridge, wallet, newValidatorSetId.toString(), eventProof.blockHash, provider);
+                        await getEventPoofAndSubmit(api, eventProof.eventId, bridge, wallet, newValidatorSetId.toString(), eventProof.blockHash, infuraProvider);
                     }
                 }
             }
@@ -148,7 +150,7 @@ async function main (networkName, bridgeContractAddress) {
                     const eventIdFound = dataFetched[0];
                     const newValidatorSetId = parseInt(dataFetched[1]);
                     logger.info(`IMP Event found at block ${blockNumber} hash ${blockHash} event id ${eventIdFound}`);
-                    await getEventPoofAndSubmit(api, eventIdFound, bridge, wallet, newValidatorSetId.toString(), blockHash, provider);
+                    await getEventPoofAndSubmit(api, eventIdFound, bridge, wallet, newValidatorSetId.toString(), blockHash, infuraProvider);
                 }
             })
         });
