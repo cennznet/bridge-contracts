@@ -51,7 +51,7 @@ async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, newValida
             v: eventProof.v
         };
         try {
-            const gasEstimated = await bridge.estimateGas.setValidators(newValidators, newValidatorSetId, proof, {gasLimit: 500000});
+            const gasEstimated = await bridge.estimateGas.setValidators(newValidators, newValidatorSetId, proof, {gasLimit: 5000000});
 
             logger.info(JSON.stringify(await bridge.setValidators(newValidators, newValidatorSetId, proof, {gasLimit: gasEstimated.add(BUFFER)})));
             await updateLastEventProcessed(eventId, blockHash.toString());
