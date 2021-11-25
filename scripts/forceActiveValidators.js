@@ -3,6 +3,7 @@ const { Api } = require('@cennznet/api');
 const logger = require('./logger');
 
 const IGNORE_KEY = '0x000000000000000000000000000000000000000000000000000000000000000000';
+const BUFFER = 1000;
 
 async function main (networkName, bridgeContractAddress) {
     try {
@@ -21,16 +22,16 @@ async function main (networkName, bridgeContractAddress) {
         const notaryKeys = await api.query.ethBridge.notaryKeys();
         const newValidators = notaryKeys.map((notaryKey) => {
             logger.info('notary key:', notaryKey.toString());
-            if (notaryKey.toString() === IGNORE_KEY) return notaryKey.toString()
+            if (notaryKey.toString() === IGNORE_KEY) return '0x0000000000000000000000000000000000000000';
             let decompressedPk = ethers.utils.computePublicKey(notaryKey);
             let h = ethers.utils.keccak256('0x' + decompressedPk.slice(4));
             return '0x' + h.slice(26)
         });
         logger.info(`First time set newValidators:: ${newValidators}`);
         logger.info(`Executor: ${txExecutor.address}`);
-        const gasEstimated = await bridge.estimateGas.forceActiveValidatorSet(newValidators, 0, {gasLimit: 500000});
+        const gasEstimated = await bridge.estimateGas.forceActiveValidatorSet(newValidators, 6, {gasLimit: 5000000});
         logger.info(`Gas estimate ${gasEstimated}`);
-        logger.info(JSON.stringify(await bridge.forceActiveValidatorSet(newValidators, 0, {gasLimit: 500000})));
+        logger.info(JSON.stringify(await bridge.forceActiveValidatorSet(newValidators, 6, {gasLimit: gasEstimated.add(BUFFER)})));
         process.exit(0)
     } catch (e) {
         logger.error(e);

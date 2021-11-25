@@ -51,13 +51,21 @@ async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, newValida
             v: eventProof.v
         };
         try {
-            const gasEstimated = await bridge.estimateGas.setValidators(newValidators, newValidatorSetId, proof, {gasLimit: 500000});
+            const gasPrice = await provider.getGasPrice();
+            logger.info('gas price::', gasPrice.toString());
+            // Take 5 percent of current gas price
+            const percentGasPrice = gasPrice.mul(5).div(100);
+            logger.info('percentGasPrice:',percentGasPrice.toString());
+            const increasedGasPrice = gasPrice.add(percentGasPrice);
+            logger.info('Gas price nw;:', gasPrice.toString());
 
-            logger.info(JSON.stringify(await bridge.setValidators(newValidators, newValidatorSetId, proof, {gasLimit: gasEstimated.add(BUFFER)})));
+            const gasEstimated = await bridge.estimateGas.setValidators(newValidators, newValidatorSetId, proof, {gasLimit: 5000000, gasPrice: increasedGasPrice});
+
+            logger.info(JSON.stringify(await bridge.setValidators(newValidators, newValidatorSetId, proof, {gasLimit: gasEstimated.add(BUFFER), gasPrice: increasedGasPrice})));
             await updateLastEventProcessed(eventId, blockHash.toString());
             const balance = await provider.getBalance(txExecutor.address);
             logger.info(`IMP Balance is: ${balance}`);
-            const gasPrice = await provider.getGasPrice();
+
             logger.info(`IMP Gas price: ${gasPrice.toString()}`);
             const gasRequired = gasEstimated.mul(gasPrice);
             logger.info(`IMP Gas required: ${gasRequired.toString()}`);
