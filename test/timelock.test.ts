@@ -56,14 +56,9 @@ describe('Timelock', () => {
     await timeLock.queueTransaction(bridge.address, 0, signature, encodedParams, eta.toNumber());
 
 
-    // await ethers.provider.send('evm_setNextBlockTimestamp', [eta.plus(1).toNumber()]);
-    // await ethers.provider.send('evm_mine');
+    await ethers.provider.send('evm_setNextBlockTimestamp', [eta.plus(1).toNumber()]);
+    await ethers.provider.send('evm_mine');
 
-
-    // with this the next block timestamp becomes
-    // Get block timestamp is 1638988095 eta is 1637873647
-    // Get eta.add(GRACE_PERIOD) is 1639083247
-    await setTime(eta.minus(1636600000));
     blockNumAfter = await ethers.provider.getBlockNumber();
     blockAfter = await ethers.provider.getBlock(blockNumAfter);
     timestampAfter = blockAfter.timestamp;
@@ -105,7 +100,8 @@ describe('Timelock', () => {
     console.log('eta:::',eta.toString());
     await timeLock.queueTransaction(bridge.address, 0, signature, encodedParams, eta.toNumber());
 
-    await setTime(eta.minus(1638500000));
+    await ethers.provider.send('evm_setNextBlockTimestamp', [eta.plus(1).toNumber()]);
+    await ethers.provider.send('evm_mine');
     blockNumAfter = await ethers.provider.getBlockNumber();
     blockAfter = await ethers.provider.getBlock(blockNumAfter);
     timestampAfter = blockAfter.timestamp;
