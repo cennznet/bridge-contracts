@@ -84,7 +84,14 @@ async function main (networkName, pegContractAddress) {
     const api = await Api.create({network: networkName});
     logger.info(`Connect to cennznet network ${networkName}`);
 
-    const provider = ethers.providers.InfuraProvider.getWebSocketProvider(process.env.ETH_NETWORK, process.env.INFURA_API_KEY);
+    let provider;
+    if (networkName === 'azalea') {
+        provider = new ethers.providers.AlchemyProvider(process.env.ETH_NETWORK,
+            process.env.AlCHEMY_API_KEY
+        );
+    } else {
+        provider = ethers.providers.InfuraProvider.getWebSocketProvider(process.env.ETH_NETWORK, process.env.INFURA_API_KEY);
+    }
 
     const keyring = new Keyring({type: 'sr25519'});
     const seed = hexToU8a(process.env.CENNZNET_SECRET);
