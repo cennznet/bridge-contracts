@@ -66,6 +66,7 @@
     "fastify-mongodb": "^4.1.0",
     "fastify-plugin": "^3.0.0",
     "hardhat": "^2.4.3",
+    "http-errors": "^1.8.1",
     "lodash": ">=4.17.21",
     "mocha": "^9.0.2",
     "mongoose": "^6.0.9",
