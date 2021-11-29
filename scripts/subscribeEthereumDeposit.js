@@ -90,7 +90,7 @@ async function main (networkName, pegContractAddress) {
             process.env.AlCHEMY_API_KEY
         );
     } else {
-        provider = ethers.providers.InfuraProvider.getWebSocketProvider(process.env.ETH_NETWORK, process.env.INFURA_API_KEY);
+        provider = ethers.providers.InfuraProvider(process.env.ETH_NETWORK, process.env.INFURA_API_KEY);
     }
 
     const keyring = new Keyring({type: 'sr25519'});
