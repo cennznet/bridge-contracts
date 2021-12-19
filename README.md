@@ -10,6 +10,18 @@ Manages a Generic Asset - ERC20 peg using the CENNZnet ethereum bridge.
 Deposited ERC20 tokens are claimable on CENNZnet for GA equivalents.  
 Withdrawing GA equivalents requires a signed proof from CENNZnet validators.  
 
+## Dev Setup
+```bash
+# start dev node
+npx hardhat node
+
+# deploy contracts
+yarn deploy
+
+# run a test eth deposit
+yarn eth_e2e
+```
+
 ## Rinkeby GnosisSafe Admin
 ```bash
 0x676Eb4346D59ce8D673D4bFF167ffBf63D77dF46
