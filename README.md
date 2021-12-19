@@ -13,7 +13,9 @@ Withdrawing GA equivalents requires a signed proof from CENNZnet validators.
 ## Dev Setup
 start a CENNZnet validator node.  
 ```bash
-cennznet \
+docker run -d \
+  -p 9944:9944 \
+  cennznet/cennznet:2.0.0 \
   --dev --tmp \
   --unsafe-rpc-external \
   --unsafe-ws-external \
