@@ -11,6 +11,16 @@ Deposited ERC20 tokens are claimable on CENNZnet for GA equivalents.
 Withdrawing GA equivalents requires a signed proof from CENNZnet validators.  
 
 ## Dev Setup
+start a CENNZnet validator node.  
+```bash
+cennznet \
+  --dev --tmp \
+  --unsafe-rpc-external \
+  --unsafe-ws-external \
+  --eth-http=http://localhost:8545 # the local hardhat node RPC endpoint
+```
+
+start a hardhat Ethereum node and deploy contracts
 ```bash
 # start dev node
 npx hardhat node
