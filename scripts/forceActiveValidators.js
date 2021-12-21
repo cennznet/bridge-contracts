@@ -27,11 +27,15 @@ async function main (networkName, bridgeContractAddress) {
             let h = ethers.utils.keccak256('0x' + decompressedPk.slice(4));
             return '0x' + h.slice(26)
         });
+        //get the latest validator set id
+        let validatorSetId = await api.query.ethBridge.notarySetId();
+        validatorSetId = parseInt(validatorSetId.toString());
+        logger.info(`Latest Validator set Id:: ${validatorSetId}`);
         logger.info(`First time set newValidators:: ${newValidators}`);
         logger.info(`Executor: ${txExecutor.address}`);
-        const gasEstimated = await bridge.estimateGas.forceActiveValidatorSet(newValidators, 6, {gasLimit: 5000000});
+        const gasEstimated = await bridge.estimateGas.forceActiveValidatorSet(newValidators, validatorSetId, {gasLimit: 5000000});
         logger.info(`Gas estimate ${gasEstimated}`);
-        logger.info(JSON.stringify(await bridge.forceActiveValidatorSet(newValidators, 6, {gasLimit: gasEstimated.add(BUFFER)})));
+        logger.info(JSON.stringify(await bridge.forceActiveValidatorSet(newValidators, validatorSetId, {gasLimit: gasEstimated.add(BUFFER)})));
         process.exit(0)
     } catch (e) {
         logger.error(e);
