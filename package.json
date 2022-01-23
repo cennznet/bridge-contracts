@@ -6,6 +6,7 @@
   "scripts": {
     "api": "node src/api/index.js",
     "build": "rm -rf artifacts & hardhat compile",
+    "build:abi": "yarn build && (mkdir abi || true) && cp artifacts/contracts/**/*.json abi/ && rm abi/*.dbg.json",
     "deploy": "hardhat run --network localhost scripts/deploy.js",
     "erc20_e2e": "hardhat run --network localhost scripts/e2e.js",
     "eth_e2e": "hardhat run --network localhost scripts/ethEndToEndTest.js",
