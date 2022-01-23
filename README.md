@@ -34,37 +34,29 @@ yarn deploy
 yarn eth_e2e
 ```
 
-## Rinkeby GnosisSafe Admin
+## Mainnet
 ```bash
-0x676Eb4346D59ce8D673D4bFF167ffBf63D77dF46
-```
-
-## Rinkeby
-```bash
-Deploying CENNZnet bridge contract...
-CENNZnet bridge deployed to: 0x75a2488b80D1a12cB0209cB1C40986863745Ee2f
-Deploying ERC20Peg contract...
-CENNZnet erc20peg deployed to: 0xa3205266ebBd74298729e04a28b8Fa53B5319679
-Deploying TestToken contract...
-TestToken deployed to: 0x5b32EADdDC81E0Ec6c24ef761ECA813d3D2d8a3F
-```
-
-## Ropsten
-```bash
-CENNZnet bridge deployed to: 0x25b53B1bDc5F03e982c383865889A4B3c6cB98AA
-Deploying ERC20Peg contract...
-CENNZnet erc20peg deployed to: 0x927a710681B63b0899E28480114Bf50c899a5c27
-Deploying TestToken contract...
-TestToken deployed to: 0xe178481d8268767F37A9060329187dfbC55b18Ff
+bridge: 0x369e2285CCf43483e76746cebbf3d1d6060913EC
+erc20peg: 0x8F68fe02884b2B05e056aF72E4F2D2313E9900eC
 ```
 
 ## Kovan
 ```bash
-CENNZnet bridge deployed to: 0x9AFe4E42d8ab681d402e8548Ee860635BaA952C5
-Deploying ERC20Peg contract...
-CENNZnet erc20peg deployed to: 0x5Ff2f9582FcA1e11d47e4e623BEf4594EB12b30d
-Deploying TestToken contract...
-TestToken deployed to: 0x5566CD1D85056c8F1e30cE05161d06645933564c
+bridge: 0x9AFe4E42d8ab681d402e8548Ee860635BaA952C5
+erc20peg: 0x5Ff2f9582FcA1e11d47e4e623BEf4594EB12b30d
+```
+
+## Ropsten
+```bash
+bridge: 0x25b53B1bDc5F03e982c383865889A4B3c6cB98AA
+erc20peg: 0x927a710681B63b0899E28480114Bf50c899a5c27
+```
+
+## Rinkeby
+```bash
+bridge: 0x75a2488b80D1a12cB0209cB1C40986863745Ee2f
+erc20peg: 0xa3205266ebBd74298729e04a28b8Fa53B5319679
+gnosis safe: 0x676Eb4346D59ce8D673D4bFF167ffBf63D77dF46
 ```
 
 ## Publish contract
