@@ -48,7 +48,8 @@ async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, newValida
             validatorSetId: eventProof.validatorSetId,
             r: eventProof.r,
             s: eventProof.s,
-            v: eventProof.v
+            v: eventProof.v,
+            validators: newValidators
         };
         try {
             const gasPrice = await provider.getGasPrice();
