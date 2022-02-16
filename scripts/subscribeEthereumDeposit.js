@@ -76,6 +76,34 @@ async function sendClaim(claim, transactionHash, api, signer, nonce) {
     });
 }
 
+// Fetch from db all transaction with EthereumConfirming status and send claims for them
+async function claimEthereumPendingTx(api, provider, claimer, eventConfirmation) {
+    const recordWithEthConfirm = await BridgeClaim.find({status: 'EthereumConfirming'});
+    console.log('recordWithEthConfirm status:',recordWithEthConfirm);
+    let nonce = (await api.rpc.system.accountNextIndex(claimer.address)).toNumber();
+    await Promise.all(
+        recordWithEthConfirm.map(async (bridgeClaimRecord) => {
+            const transactionHash = bridgeClaimRecord.txHash;
+            const txReceipt = await provider.getTransaction(transactionHash); // The receipt is not available for pending transactions and returns null.
+            console.log('txReceipt::',txReceipt);
+            // if receipt for tx hash exist and satisfies confirmation criteris, send claim to CENNZnet chain
+            if (txReceipt && txReceipt.blockNumber && txReceipt.confirmations >= eventConfirmation ) {
+               // decode the input data
+                const [tokenAddress, amount, cennznetAddress] = ethers.utils.defaultAbiCoder.decode(
+                    ['address', 'uint256', 'bytes32'],
+                    ethers.utils.hexDataSlice(txReceipt.data, 4)
+                );
+                const claim = {
+                    tokenAddress,
+                    amount: amount.toString(),
+                    beneficiary: cennznetAddress
+                };
+                await sendClaim(claim, transactionHash, api, claimer, nonce++);
+            }
+        })
+    );
+}
+
 async function main (networkName, pegContractAddress) {
     networkName = networkName || 'local';
     const connectionStr = process.env.MONGO_URI;
@@ -105,6 +133,8 @@ async function main (networkName, pegContractAddress) {
     logger.info(`CENNZnet peg deployed to: ${peg.address}`);
     const eventConfirmation = (await api.query.ethBridge.eventConfirmations()).toNumber();
     logger.info(`eventConfirmation::${eventConfirmation}`);
+
+    await claimEthereumPendingTx(api, provider, claimer, eventConfirmation);
 
     peg.on("Deposit", async (sender, tokenAddress, amount, cennznetAddress, eventInfo) => {
         logger.info(`Got the event...${JSON.stringify(eventInfo)}`);
