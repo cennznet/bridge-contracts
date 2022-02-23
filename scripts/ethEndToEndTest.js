@@ -114,10 +114,10 @@ async function main() {
 
     let eventProofId = null;
     // eslint-disable-next-line no-async-promise-executor
-    await new Promise(async (resolve) => {
+    await new Promise(async (resolve, reject) => {
         const unsubHeads = await api.rpc.chain.subscribeNewHeads(() => {
             console.log('Waiting till Ethbridge sends a verify event...');
-            console.log('Also look for Erc20deposit event to check if deposit claim succeeeded')
+            console.log('Also look for Erc20deposit event to check if deposit claim succeeded')
             api.query.system.events((events) => {
                 // loop through the Vec<EventRecord>
                 events.forEach((record) => {
@@ -128,8 +128,13 @@ async function main() {
                         if (claimId.toString() === eventClaimId.toString() && claimer.toString() === alice.address) {
                             console.log('Deposited claim on CENNZnet side succeeded..');
                         }
-                    }
-                    if (event.section === 'ethBridge' && event.method === 'Verified') {
+                    } else if (event.section === 'erc20Peg' && event.method === 'Erc20Failed') {
+                        const [claimId] = event.data;
+                        if (claimId.toString() === eventClaimId.toString()) {
+                            console.error(`Deposit claim failed: ${eventClaimId.toString()}`);
+                            reject('Deposit claim failed');
+                        }
+                    } else if (event.section === 'ethBridge' && event.method === 'Verified') {
                         unsubHeads();
                         resolve();
                     }
