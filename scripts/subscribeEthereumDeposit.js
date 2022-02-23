@@ -106,8 +106,6 @@ async function main (networkName, pegContractAddress) {
     const eventConfirmation = (await api.query.ethBridge.eventConfirmations()).toNumber();
     logger.info(`eventConfirmation::${eventConfirmation}`);
 
-    await claimEthereumPendingTx(api, provider, claimer, eventConfirmation);
-
     peg.on("Deposit", async (sender, tokenAddress, amount, cennznetAddress, eventInfo) => {
         logger.info(`Got the event...${JSON.stringify(eventInfo)}`);
         logger.info('*****************************************************');
