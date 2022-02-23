@@ -69,7 +69,7 @@ describe('Timelock', () => {
       gasLimit: 100000
     });
     const payout = await bridge.maxRewardPayout();
-    console.log('Payout::',payout.toString());
+    console.log('Payout::', payout.toString());
     await expect(payout.toString()).equal(newMaxRewardPayout.toString());
   });
 

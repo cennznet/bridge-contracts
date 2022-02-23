@@ -1,5 +1,5 @@
 import { expect, use } from 'chai';
-import { Contract, utils } from 'ethers';
+import { Contract, utils, ethers } from 'ethers';
 import { deployContract, MockProvider, solidity } from 'ethereum-waffle';
 import CENNZnetBridge from '../artifacts/contracts/CENNZnetBridge.sol/CENNZnetBridge.json';
 
@@ -20,6 +20,7 @@ function publicKeyToEthAddress(publicKey: utils.BytesLike) {
 describe('CENNZnetBridge', () => {
   const [wallet, walletTo] = new MockProvider().getWallets();
   let bridge: Contract;
+  let abi = ethers.utils.defaultAbiCoder;
 
   beforeEach(async () => {
     bridge = await deployContract(wallet, CENNZnetBridge, []);
@@ -38,13 +39,17 @@ describe('CENNZnetBridge', () => {
     let validatorAddress = utils.computeAddress(validatorPublicKey);
     console.log('validator address', validatorAddress);
 
-    // Setup the bridge contract's initial validator set
+    // Setup the bridge contract's initial validator set (use alice sig x5 for simplicity)
+    let validators = [validatorAddress, validatorAddress, validatorAddress, validatorAddress, validatorAddress];
     await bridge.forceActiveValidatorSet(
         // 'Alice' default CENNZnet ECDSA public key converted to Eth address
-        [validatorAddress, validatorAddress, validatorAddress, validatorAddress, validatorAddress],
+        validators,
         validatorSetId,
     );
-    expect(await bridge.validators(validatorSetId, 0), validatorAddress);
+    // validator digest is correct
+    expect(
+        await bridge.validatorSetDigests(validatorSetId)).equals(utils.keccak256(abi.encode(["address[]"], [validators]))
+    );
 
     // A CENNZnet validator signature
     let signature = utils.hexlify('0x391d9ea095cf8d41b64f30b51447e44766bc2b8042ba7721597279fac5c9ccf377a5c1ba02a770b50c0a97636579811bf8a1da8d9f126985a1290ddf559283a701');
@@ -60,7 +65,7 @@ describe('CENNZnetBridge', () => {
                 v: [sig.v,sig.v,sig.v,sig.v,sig.v],
                 r: [sig.r,sig.r,sig.r,sig.r,sig.r],
                 s: [sig.s,sig.s,sig.s,sig.s,sig.s],
-                validators: [validatorAddress, validatorAddress, validatorAddress, validatorAddress, validatorAddress],
+                validators,
             },
             {
                 // Prevents error: 'cannot estimate gas; transaction may fail or may require manual gas limit'
@@ -225,14 +230,65 @@ describe('CENNZnetBridge', () => {
     await expect(
         bridge.verifyMessage(
             "0x1234",
-            { eventId: 0, validatorSetId: 1, v: [], r: [], s: [] },
+            { eventId: 0, validatorSetId: 1, v: [], r: [], s: [], validators: [] },
             { gasLimit: 100000 }
         )
     ).to.be.revertedWith("must supply verification fee");
   });
 
-  it('verifyMessage from historic validator set', async () => {
-      // TODO
-  });
+  it('setValidators', async () => {
+    // Public Key from CENNZnet: 0x0204dad6fc9c291c68498de501c6d6d17bfe28aee69cfbf71b2cc849caafcb0159
+    let validatorPublicKey = '0x0204dad6fc9c291c68498de501c6d6d17bfe28aee69cfbf71b2cc849caafcb0159';
+    let validatorAddress = utils.computeAddress(validatorPublicKey);
+    let validatorSetId = 0;
 
+    // Setup the bridge contract's initial validator set (use alice sig x5 for simplicity)
+    let validators = [validatorAddress];
+    await bridge.forceActiveValidatorSet(
+        // 'Alice' default CENNZnet ECDSA public key converted to Eth address
+        validators,
+        validatorSetId,
+    );
+    // validator digest is correct
+    let validatorSetDigest = utils.keccak256(abi.encode(["address[]"], [validators]));
+    expect(await bridge.validatorSetDigests(validatorSetId)).equals(validatorSetDigest);
+
+    let verificationFee = await bridge.verificationFee();
+    // A CENNZnet validator signature for notary set change event. pre-generated on dev chain
+    let signature = utils.splitSignature(
+      utils.hexlify('0x384fdafa02121ca2333611a0e27ece130797fd34d7712ddcd29633f60fbc424c3ce5247416b7c887b68ffe428573750346612a78939251ed8d072999aed11ccf01')
+    );
+    let setValidatorProof = {
+        eventId: 0,
+        validatorSetId: 0,
+        validators: [validatorAddress],
+        v: [signature.v],
+        r: [signature.r],
+        s: [signature.s],
+      };
+
+      let newValidatorSetId = validatorSetId + 1;
+      let estimatedGas = await bridge.estimateGas.setValidators(
+          [validatorAddress],
+          newValidatorSetId,
+          setValidatorProof,
+          {
+            gasLimit: 500000,
+            value: verificationFee
+          }
+      );
+      console.log(`setValidator gas: ${estimatedGas}`);
+      await bridge.setValidators(
+        [validatorAddress],
+        newValidatorSetId,
+        setValidatorProof,
+        {
+          gasLimit: estimatedGas,
+          value: verificationFee
+        }
+      );
+
+      expect(await bridge.activeValidatorSetId()).equals(newValidatorSetId);
+      expect(await bridge.validatorSetDigests(newValidatorSetId)).equals(validatorSetDigest);
+  });
 })
