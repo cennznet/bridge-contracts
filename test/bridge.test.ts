@@ -253,7 +253,6 @@ describe('CENNZnetBridge', () => {
     let validatorSetDigest = utils.keccak256(abi.encode(["address[]"], [validators]));
     expect(await bridge.validatorSetDigests(validatorSetId)).equals(validatorSetDigest);
 
-    let verificationFee = await bridge.verificationFee();
     // A CENNZnet validator signature for notary set change event. pre-generated on dev chain
     let signature = utils.splitSignature(
       utils.hexlify('0x384fdafa02121ca2333611a0e27ece130797fd34d7712ddcd29633f60fbc424c3ce5247416b7c887b68ffe428573750346612a78939251ed8d072999aed11ccf01')
@@ -261,7 +260,7 @@ describe('CENNZnetBridge', () => {
     let setValidatorProof = {
         eventId: 0,
         validatorSetId: 0,
-        validators: [validatorAddress],
+        validators,
         v: [signature.v],
         r: [signature.r],
         s: [signature.s],
@@ -269,22 +268,20 @@ describe('CENNZnetBridge', () => {
 
       let newValidatorSetId = validatorSetId + 1;
       let estimatedGas = await bridge.estimateGas.setValidators(
-          [validatorAddress],
+          validators,
           newValidatorSetId,
           setValidatorProof,
           {
             gasLimit: 500000,
-            value: verificationFee
           }
       );
       console.log(`setValidator gas: ${estimatedGas}`);
       await bridge.setValidators(
-        [validatorAddress],
+        validators,
         newValidatorSetId,
         setValidatorProof,
         {
           gasLimit: estimatedGas,
-          value: verificationFee
         }
       );
 
