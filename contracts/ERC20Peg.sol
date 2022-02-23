@@ -61,7 +61,7 @@ contract ERC20Peg is Ownable {
         bridge.verifyMessage{ value: msg.value }(message, proof);
 
         if (tokenType == ETH_RESERVED_TOKEN_ADDRESS) {
-            (bool sent, ) = msg.sender.call{value: amount}("");
+            (bool sent, ) = recipient.call{value: amount}("");
             require(sent, "Failed to send Ether");
         } else {
             SafeERC20.safeTransfer(IERC20(tokenType), recipient, amount);

@@ -1,7 +1,6 @@
 import { expect, use } from 'chai';
 import { Contract, utils } from 'ethers';
 import { deployContract, MockProvider, solidity } from 'ethereum-waffle';
-import { suiteSetup } from 'mocha';
 import CENNZnetBridge from '../artifacts/contracts/CENNZnetBridge.sol/CENNZnetBridge.json';
 
 use(solidity);
@@ -61,6 +60,7 @@ describe('CENNZnetBridge', () => {
                 v: [sig.v,sig.v,sig.v,sig.v,sig.v],
                 r: [sig.r,sig.r,sig.r,sig.r,sig.r],
                 s: [sig.s,sig.s,sig.s,sig.s,sig.s],
+                validators: [validatorAddress, validatorAddress, validatorAddress, validatorAddress, validatorAddress],
             },
             {
                 // Prevents error: 'cannot estimate gas; transaction may fail or may require manual gas limit'
@@ -100,6 +100,7 @@ describe('CENNZnetBridge', () => {
                     v: [sig.v],
                     r: [sig.r],
                     s: [sig.s],
+                    validators: [validatorAddress],
                 },
                 {
                     // Prevents error: 'cannot estimate gas; transaction may fail or may require manual gas limit'
@@ -145,6 +146,7 @@ describe('CENNZnetBridge', () => {
                 v: [sig.v, 0, 0, sig.v, 0],
                 r: [sig.r, omitted, omitted, sig.r, omitted],
                 s: [sig.s, omitted, omitted, sig.s, omitted],
+                validators: [validatorAddress, validatorAddress, validatorAddress, validatorAddress, validatorAddress],
             },
             {
                 // Prevents error: 'cannot estimate gas; transaction may fail or may require manual gas limit'
@@ -190,6 +192,7 @@ describe('CENNZnetBridge', () => {
             v: [sig.v],
             r: [sig.r],
             s: [sig.s],
+            validators: [validatorAddress],
         },
         {
             gasLimit: 100000,
@@ -208,6 +211,7 @@ describe('CENNZnetBridge', () => {
                 v: [sig.v],
                 r: [sig.r],
                 s: [sig.s],
+                validators: [validatorAddress],
             },
             {
                 gasLimit: 100000,
