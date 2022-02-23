@@ -105,17 +105,6 @@ describe('Erc20Peg', () => {
     ).to.be.reverted;
   });
 
-  it('erc20 deposit, incorrect amount', async () => {
-    let depositAmount = 7777;
-    let cennznetAddress = '0xacd6118e217e552ba801f7aa8a934ea6a300a5b394e7c3f42cd9d6dd9a457c10';
-    await erc20Peg.activateDeposits();
-    let ethTokenAddress = await erc20Peg.ETH_RESERVED_TOKEN_ADDRESS();
-
-    await expect(
-      erc20Peg.deposit(ethTokenAddress, depositAmount, cennznetAddress, { value: depositAmount - 1 })
-    ).to.be.revertedWith('incorrect deposit amount');
-  });
-
   it('native eth withdraw, different sender', async () => {
     // SETUP: Eth liquidity
     let depositAmount = 5644;
