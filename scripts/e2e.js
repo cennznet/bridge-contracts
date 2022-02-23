@@ -137,7 +137,7 @@ async function main() {
     await new Promise( (resolve) => {
         let amount = depositAmount;
         const ethBeneficiary = deployer.address;
-        api.tx.erc20Peg.withdraw(testTokenId, amount, ethBeneficiary,).signAndSend(alice, async ({status, events}) => {
+        api.tx.erc20Peg.withdraw(testTokenId, amount, ethBeneficiary).signAndSend(alice, async ({status, events}) => {
             if (status.isInBlock) {
                 for (const {event: {method, section, data}} of events) {
                     if (section === 'erc20Peg' && method == 'Erc20Withdraw') {
@@ -210,7 +210,8 @@ async function main() {
     console.log(await peg.withdraw(token.address, withdrawAmount, deployer.address, {eventId: eventProof.eventId, validatorSetId: eventProof.validatorSetId,
             v,
             r,
-            s
+            s,
+            validators: newValidators,
         },
         {
             gasLimit: 500000,
