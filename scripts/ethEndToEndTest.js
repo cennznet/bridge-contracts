@@ -111,8 +111,6 @@ async function main() {
         });
     });
 
-
-    let eventProofId = null;
     // eslint-disable-next-line no-async-promise-executor
     await new Promise(async (resolve, reject) => {
         const unsubHeads = await api.rpc.chain.subscribeNewHeads(() => {
@@ -142,6 +140,8 @@ async function main() {
             });
         });
     });
+
+    let eventProofId = null;
     await new Promise( (resolve) => {
         let amount = depositAmount;
         const ethBeneficiary = deployer.address;
