@@ -122,10 +122,12 @@ jobs:
         ETH_ACCOUNT_KEY: ${{ secrets.ETH_ACCOUNT_KEY }}
         ROPSTEN_INFURA_API_KEY: ${{ secrets.ROPSTEN_INFURA_API_KEY }}
       run: |
+        yarn
         yarn erc20_e2e
     - name: deposit/withdraw scenarios for native Eth
       env:
         ETH_ACCOUNT_KEY: ${{ secrets.ETH_ACCOUNT_KEY }}
         ROPSTEN_INFURA_API_KEY: ${{ secrets.ROPSTEN_INFURA_API_KEY }}
       run: |
+        yarn
         yarn eth_e2e
