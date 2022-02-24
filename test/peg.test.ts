@@ -164,4 +164,11 @@ describe('Erc20Peg', () => {
     let recipientEthBalance = await erc20Peg.provider.getBalance(recipient);
     expect(recipientEthBalance).equals(depositAmount);
   });
+
+  it('owner can endow ETH', async () => {
+    let endowment = 123456789;
+    await erc20Peg.endow({ value: endowment });
+    let contractEthBalance = await erc20Peg.provider.getBalance(erc20Peg.address);
+    expect(contractEthBalance).to.equal(endowment);
+  });
 });

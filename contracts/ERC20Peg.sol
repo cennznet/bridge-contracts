@@ -6,9 +6,9 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-// Provides an ERC20/GA CENNZnet peg
-// - depositing: lock ERC20 tokens to redeem CENNZnet "generic asset" 1:1
-// - withdrawing: burn GAs to withdraw ERC20 tokens 1:1
+// Provides an Eth/ERC20/GA CENNZnet peg
+// - depositing: lock Eth/ERC20 tokens to redeem CENNZnet "generic asset" 1:1
+// - withdrawing: burn or lock GAs to redeem Eth/ERC20 tokens 1:1
 contract ERC20Peg is Ownable {
     using SafeMath for uint256;
     // whether the peg is accepting deposits
@@ -28,6 +28,7 @@ contract ERC20Peg is Ownable {
         bridge = CENNZnetBridge(_bridge);
     }
 
+    event Endow(uint256 amount);
     event Deposit(address indexed, address tokenType, uint256 amount, bytes32 cennznetAddress);
     event Withdraw(address indexed, address tokenType, uint256 amount);
 
@@ -68,6 +69,11 @@ contract ERC20Peg is Ownable {
         }
 
         emit Withdraw(recipient, tokenType, amount);
+    }
+
+    function endow() external onlyOwner payable {
+        require(msg.value > 0, "must endow nonzero");
+        emit Endow(msg.value);
     }
 
     function activateCENNZDeposits() external onlyOwner {
