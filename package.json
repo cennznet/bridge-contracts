@@ -40,6 +40,7 @@
   "bugs": {
     "url": "https://github.com/cennznet/cennznet/issues"
   },
+  "engines": { "node": ">=0.12 < 17.5.0" },
   "homepage": "https://github.com/cennznet/cennznet#readme",
   "dependencies": {
     "@types/chai": "^4.2.19",
