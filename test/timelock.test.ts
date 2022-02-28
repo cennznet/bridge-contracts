@@ -69,7 +69,7 @@ describe('Timelock', () => {
       gasLimit: 100000
     });
     const payout = await bridge.maxRewardPayout();
-    console.log('Payout::',payout.toString());
+    console.log('Payout::', payout.toString());
     await expect(payout.toString()).equal(newMaxRewardPayout.toString());
   });
 
@@ -114,8 +114,8 @@ describe('Timelock', () => {
     const activeValidatorSetId = await bridge.activeValidatorSetId();
     console.log('activeValidatorSetId::',activeValidatorSetId.toString());
     await expect(activeValidatorSetId.toString()).equal(validatorSetId.toString());
-    const validators = await bridge.validators[activeValidatorSetId];
-    console.log('Validators::', validators);
+    const validatorSetDigest = await bridge.validatorSetDigests(activeValidatorSetId);
+    console.log('Validators::', validatorSetDigest);
     console.log('addressArr::', addressArr);
   });
 
