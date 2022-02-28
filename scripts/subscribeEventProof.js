@@ -6,7 +6,7 @@ const { curly } = require("node-libcurl");
 const mongoose = require('mongoose');
 const { EventProcessed  } = require('../src/mongo/models');
 const ethers = require('ethers');
-const { BRIDGE } = require("./abiConfig.json");
+const bridgeAbi = require("../abi/CENNZnetBridge.json").abi;
 
 const timeoutMs = 20000;
 const BUFFER = 1000;
@@ -48,7 +48,8 @@ async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, newValida
             validatorSetId: eventProof.validatorSetId,
             r: eventProof.r,
             s: eventProof.s,
-            v: eventProof.v
+            v: eventProof.v,
+            validators: newValidators
         };
         try {
             const gasPrice = await provider.getGasPrice();
@@ -108,7 +109,7 @@ async function main (networkName, bridgeContractAddress) {
 
     let wallet = new ethers.Wallet(process.env.ETH_ACCOUNT_KEY, infuraProvider);
 
-    const bridge = new ethers.Contract(bridgeContractAddress, BRIDGE, wallet);
+    const bridge = new ethers.Contract(bridgeContractAddress, bridgeAbi, wallet);
     logger.info('Connecting to CENNZnet bridge contract...');
     logger.info(`CENNZnet bridge deployed to: ${bridge.address}`);
 
