@@ -8,7 +8,7 @@ const { BridgeClaim  } = require('../src/mongo/models');
 const ethers = require('ethers');
 const { curly } = require("node-libcurl");
 const { hexToU8a } = require("@cennznet/util");
-const { PEG } = require("./abiConfig.json");
+const pegAbi = require("../abi/ERC20Peg.json").abi;
 const airDropAmount = 50000;
 
 async function airDrop(claimId, signer, api, spendingAssetId, nonce) {
@@ -100,7 +100,7 @@ async function main (networkName, pegContractAddress) {
 
     const spendingAssetId = await api.query.genericAsset.spendingAssetId();
 
-    const peg = new ethers.Contract(pegContractAddress, PEG, provider);
+    const peg = new ethers.Contract(pegContractAddress, pegAbi, provider);
     logger.info('Connecting to CENNZnet peg contract...');
     logger.info(`CENNZnet peg deployed to: ${peg.address}`);
     const eventConfirmation = (await api.query.ethBridge.eventConfirmations()).toNumber();
