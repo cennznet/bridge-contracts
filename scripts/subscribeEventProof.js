@@ -13,15 +13,27 @@ const BUFFER = 1000;
 // Ignore if validator public key is 0x000..
 const IGNORE_KEY = '0x000000000000000000000000000000000000000000000000000000000000000000';
 
-// Get the notary key from CENNZnet and convert it to public key to be used to set validator on bridge contract
-async function  extractNewValidators(api, blockHash) {
-    const notaryKeys = await api.query.ethBridge.nextNotaryKeys.at(blockHash);
+function extractValidators() {
     const newValidators = notaryKeys.map((notaryKey) => {
         if (notaryKey.toString() === IGNORE_KEY) return '0x0000000000000000000000000000000000000000';
         let decompressedPk = ethers.utils.computePublicKey(notaryKey);
         let h = ethers.utils.keccak256('0x' + decompressedPk.slice(4));
         return '0x' + h.slice(26)
     });
+    return newValidators;
+}
+
+// Get the next notary key from CENNZnet and convert it to public key to be used to set validator on bridge contract
+async function  extractNewValidators(api, blockHash) {
+    const notaryKeys = await api.query.ethBridge.nextNotaryKeys.at(blockHash);
+    const newValidators = extractValidators(notaryKeys);
+    return newValidators;
+}
+
+// Get the current notary key from CENNZnet and convert it to public key to be used to set validator on bridge contract
+async function  extractCurrentValidators(api, blockHash) {
+    const notaryKeys = await api.query.ethBridge.notaryKeys.at(blockHash);
+    const newValidators = extractValidators(notaryKeys);
     return newValidators;
 }
 
@@ -43,13 +55,15 @@ async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, newValida
         logger.info(`IMP newValidators:${newValidators}`);
         logger.info(`IMP newValidatorSetId: ${newValidatorSetId}`);
         logger.info(`IMP event proof::${JSON.stringify(eventProof)}`);
+        const currentValidators = await extractCurrentValidators(api, blockHash);
+        logger.info(`IMP currentValidators:${currentValidators}`);
         const proof = {
             eventId: eventProof.eventId,
             validatorSetId: eventProof.validatorSetId,
             r: eventProof.r,
             s: eventProof.s,
             v: eventProof.v,
-            validators: newValidators
+            validators: currentValidators
         };
         try {
             const gasPrice = await provider.getGasPrice();
