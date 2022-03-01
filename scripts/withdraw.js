@@ -106,8 +106,8 @@ async function main() {
     ];
     console.log('make sure the proof validators addresses (ethBridge.notaryKeys) match');
     console.log(validators);
-    const answer = await prompt.get(['y/n?']);
-    if(answer['y/n?'] !== 'y') {
+    const validatorsAnswer = await prompt.get(['y/n?']);
+    if(validatorsAnswer['y/n?'] !== 'y') {
        throw new Error('cancelled withdrawal, exiting...');
     }
 
