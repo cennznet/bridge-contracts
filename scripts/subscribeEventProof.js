@@ -13,7 +13,7 @@ const BUFFER = 1000;
 // Ignore if validator public key is 0x000..
 const IGNORE_KEY = '0x000000000000000000000000000000000000000000000000000000000000000000';
 
-function extractValidators() {
+function extractValidators(notaryKeys) {
     const newValidators = notaryKeys.map((notaryKey) => {
         if (notaryKey.toString() === IGNORE_KEY) return '0x0000000000000000000000000000000000000000';
         let decompressedPk = ethers.utils.computePublicKey(notaryKey);
