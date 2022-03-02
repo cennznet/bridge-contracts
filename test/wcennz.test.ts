@@ -47,6 +47,7 @@ describe('Erc20Peg', () => {
                 gasLimit: 500000,
             }
         );
+        console.log(`withdraw gas: ${estimatedGas}`);
 
         await expect(
             erc20Peg.withdraw(
