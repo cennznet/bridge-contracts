@@ -28,27 +28,13 @@ describe('Erc20Peg', () => {
         await erc20Peg.activateWithdrawals();
         await wrappedCENNZ.approve(erc20Peg.address, withdrawalAmount);
 
-        // SETUP: bridge contract validators
-        let validatorPublicKey = '0x0204dad6fc9c291c68498de501c6d6d17bfe28aee69cfbf71b2cc849caafcb0159';
-        let validatorAddress = utils.computeAddress(validatorPublicKey);
-        let validatorSetId = 0;
-        await bridge.forceActiveValidatorSet(
-            // 'Alice' default CENNZnet ECDSA public key converted to Eth address
-            [validatorAddress],
-            validatorSetId,
-        );
-        let verificationFee = await bridge.verificationFee();
-        // A CENNZnet validator signature for withdraw event: (ETH_RESERVED_TOKEN_ADDRESS, 5644, 0xa86e122EdbDcBA4bF24a2Abf89F5C230b37DF49d)
-        let signature = utils.splitSignature(
-            utils.hexlify('0x67bb4327409a32ce8acd415a836ba9106d3371281cc8dc646f075c18a21717701b48bd8b57c4193a20acef0c3ab7a6fcc5f7f6b27e199b1a51b38bda857bdc1601')
-        );
-        let withdrawProof = {
+        let fakeWithdrawProof = {
             eventId: 1,
             validatorSetId: 0,
-            validators: [validatorAddress],
-            v: [signature.v],
-            r: [signature.r],
-            s: [signature.s],
+            validators: [],
+            v: [],
+            r: [],
+            s: [],
         };
 
         // TEST
@@ -56,10 +42,9 @@ describe('Erc20Peg', () => {
             wrappedCENNZ.address,
             withdrawalAmount,
             wallet.address,
-            withdrawProof,
+            fakeWithdrawProof,
             {
                 gasLimit: 500000,
-                value: verificationFee
             }
         );
 
@@ -68,10 +53,9 @@ describe('Erc20Peg', () => {
                 wrappedCENNZ.address,
                 withdrawalAmount,
                 wallet.address,
-                withdrawProof,
+                fakeWithdrawProof,
                 {
                     gasLimit: estimatedGas,
-                    value: verificationFee
                 })
         ).to.emit(erc20Peg, 'Withdraw').withArgs(wallet.address, wrappedCENNZ.address, withdrawalAmount);
 
