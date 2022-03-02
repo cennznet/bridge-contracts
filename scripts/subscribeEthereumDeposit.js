@@ -92,6 +92,8 @@ PubSub.subscribe(TOPIC_ETH_CONFIRM, sendCENNZnetClaimSubscriber);
 // subscribe CENNZnet confirm event and check in next 5 blocks if proof is valid/invalid (verify claim)
 PubSub.subscribe(TOPIC_CENNZnet_CONFIRM, verifyClaimSubscriber);
 
+// Wait for tx on ethereum till the confirmed blocks and then submits claim on CENNZnet,
+// wait has a timeout of 10 minutes, after which it will update the status 'EthConfirmationTimeout' for a txHash
 async function sendCENNZnetClaimSubscriber(msg, data) {
     const {txHash, provider, confirms, claim,  claimer, api} = data;
     const timeout = 600000; // 10 minutes
@@ -108,12 +110,14 @@ async function sendCENNZnetClaimSubscriber(msg, data) {
     }
 }
 
+// This is subscribed after the claim it sent on CENNZnet, it knows the blocknumber at which claim was sent
+// and it waits for 5 more finalized blocks and check if the claim was verified in these 5 blocks and updates the db
 async function verifyClaimSubscriber(msg, data) {
     const { eventClaimId, claimer, api } = data;
     const intervalSecond = 5;
     let { blockNumber } = data;
     const spendingAssetId = await api.query.genericAsset.spendingAssetId();
-    const blockDiff = 4 - (latestFinalizedBlockNumber - blockNumber);
+    const blockDiff = 4 - (latestFinalizedBlockNumber - blockNumber); // wait for 5 blocks before checking the events
     await wait(blockDiff * intervalSecond); // wait for 4*5 = 20 seconds
     console.log('Inside verify claim subscriber');
     console.log('block number::', blockNumber);
@@ -196,6 +200,7 @@ async function main (networkName, pegContractAddress) {
     const eventConfirmation = (await api.query.ethBridge.eventConfirmations()).toNumber();
     logger.info(`eventConfirmation::${eventConfirmation}`);
 
+    // On eth side deposit push pub sub queue with the data, if bridge is paused, update tx status as bridge paused
     peg.on("Deposit", async (sender, tokenAddress, amount, cennznetAddress, eventInfo) => {
         logger.info(`Got the event...${JSON.stringify(eventInfo)}`);
         logger.info('*****************************************************');
@@ -219,7 +224,7 @@ async function main (networkName, pegContractAddress) {
         }
     });
 
-    // Keep checking for ethbridge, verified event and updated the db (which would mean successful)
+    // Keep track of latest finalized block
     await api.rpc.chain
         .subscribeFinalizedHeads(async (head) => {
             const blockNumber = head.number.toNumber();
