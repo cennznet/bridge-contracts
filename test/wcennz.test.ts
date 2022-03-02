@@ -1,5 +1,5 @@
 import { expect, use } from 'chai';
-import { Contract, utils } from 'ethers';
+import { Contract, ethers } from 'ethers';
 import { deployContract, MockProvider, solidity } from 'ethereum-waffle';
 import CENNZnetBridge from '../artifacts/contracts/CENNZnetBridge.sol/CENNZnetBridge.json';
 import ERC20Peg from '../artifacts/contracts/ERC20Peg.sol/ERC20Peg.json';
@@ -91,5 +91,143 @@ describe('Erc20Peg', () => {
         // Check account has correct funds
         let userBalanceAfterDeposit = await wrappedCENNZ.balanceOf(wallet.address);
         expect(userBalanceAfterDeposit).to.equal(userBalanceAfterWithdrawal - depositAmount);
+    });
+
+    it('transfer wrapped CENNZ', async () => {
+        let withdrawalAmount = 10;
+        let userBalanceStart = await wrappedCENNZ.balanceOf(wallet.address);
+        await erc20Peg.activateWithdrawals();
+        await wrappedCENNZ.approve(erc20Peg.address, withdrawalAmount);
+
+        let fakeWithdrawProof = {
+            eventId: 1,
+            validatorSetId: 0,
+            validators: [],
+            v: [],
+            r: [],
+            s: [],
+        };
+
+        // TEST
+        let estimatedGas = await erc20Peg.estimateGas.withdraw(
+            wrappedCENNZ.address,
+            withdrawalAmount,
+            wallet.address,
+            fakeWithdrawProof,
+            {
+                gasLimit: 500000,
+            }
+        );
+
+        await expect(
+            erc20Peg.withdraw(
+                wrappedCENNZ.address,
+                withdrawalAmount,
+                wallet.address,
+                fakeWithdrawProof,
+                {
+                    gasLimit: estimatedGas,
+                })
+        ).to.emit(erc20Peg, 'Withdraw').withArgs(wallet.address, wrappedCENNZ.address, withdrawalAmount);
+
+        // Check wallet has funds
+        let userBalanceAfterWithdrawal = await wrappedCENNZ.balanceOf(wallet.address);
+        expect(userBalanceAfterWithdrawal).to.equal(userBalanceStart + withdrawalAmount);
+
+        let transferAmount = 10;
+        let recipient = '0xa86e122EdbDcBA4bF24a2Abf89F5C230b37DF49d';
+        expect(recipient).not.equals(wallet.address);
+        let recipientBalanceBeforeTransfer = await wrappedCENNZ.balanceOf(recipient);
+        expect(recipientBalanceBeforeTransfer).to.equal(0);
+
+        await wrappedCENNZ.transfer(
+            recipient,
+            transferAmount
+        );
+
+        // Check funds have transferred correctly
+        expect(await wrappedCENNZ.balanceOf(recipient)).to.equal(recipientBalanceBeforeTransfer + transferAmount);
+        expect(await wrappedCENNZ.balanceOf(wallet.address)).to.equal(userBalanceAfterWithdrawal - transferAmount);
+    });
+
+    it('approve and transfer wrapped CENNZ', async () => {
+        let withdrawalAmount = 10;
+        let userBalanceStart = await wrappedCENNZ.balanceOf(wallet.address);
+        await erc20Peg.activateWithdrawals();
+        await wrappedCENNZ.approve(erc20Peg.address, withdrawalAmount);
+
+        let fakeWithdrawProof = {
+            eventId: 1,
+            validatorSetId: 0,
+            validators: [],
+            v: [],
+            r: [],
+            s: [],
+        };
+
+        // TEST
+        let estimatedGas = await erc20Peg.estimateGas.withdraw(
+            wrappedCENNZ.address,
+            withdrawalAmount,
+            wallet.address,
+            fakeWithdrawProof,
+            {
+                gasLimit: 500000,
+            }
+        );
+
+        await expect(
+            erc20Peg.withdraw(
+                wrappedCENNZ.address,
+                withdrawalAmount,
+                wallet.address,
+                fakeWithdrawProof,
+                {
+                    gasLimit: estimatedGas,
+                })
+        ).to.emit(erc20Peg, 'Withdraw').withArgs(wallet.address, wrappedCENNZ.address, withdrawalAmount);
+
+        // Check wallet has funds
+        let userBalanceAfterWithdrawal = await wrappedCENNZ.balanceOf(wallet.address);
+        expect(userBalanceAfterWithdrawal).to.equal(userBalanceStart + withdrawalAmount);
+
+        let transferAmount = 9;
+        let recipient = '0xa86e122EdbDcBA4bF24a2Abf89F5C230b37DF49d';
+        let approvedAccount = '0x430abA96F6E32B528CDCc18ad01b7f484C628819';
+
+        expect(recipient).not.equals(wallet.address);
+        let recipientBalanceBeforeTransfer = await wrappedCENNZ.balanceOf(recipient);
+        expect(recipientBalanceBeforeTransfer).to.equal(0);
+
+        await wrappedCENNZ.approve(
+            approvedAccount,
+            transferAmount
+        );
+
+        estimatedGas = await wrappedCENNZ.estimateGas.transferFrom(
+            wallet.address,
+            recipient,
+            transferAmount,
+            {
+                gasLimit: 500000,
+            }
+        );
+        const infuraProvider = new ethers.providers.InfuraProvider(process.env.ETH_NETWORK,
+            process.env.INFURA_API_KEY
+        );
+        let approvedWallet = new ethers.Wallet(process.env.ETH_ACCOUNT_KEY, infuraProvider);
+        await wrappedCENNZ.transferFrom(
+            wallet.address,
+            recipient,
+            transferAmount,
+            {
+                gasLimit: estimatedGas,
+                from: approvedWallet
+            },
+        );
+
+        // Check funds have transferred correctly
+        expect(await wrappedCENNZ.balanceOf(recipient)).to.equal(recipientBalanceBeforeTransfer + transferAmount);
+        expect(await wrappedCENNZ.balanceOf(wallet.address)).to.equal(userBalanceAfterWithdrawal - transferAmount);
     });
 });
