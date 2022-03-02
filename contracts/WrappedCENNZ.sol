@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract WrappedCENNZ is ERC20 {
-    // CENNZ ERC20 contract address
+    // CENNZnet erc20 peg address
     address public pegAddress;
 
     constructor(address _pegAddress) ERC20("Wrapped CENNZ", "WCENNZ") {
