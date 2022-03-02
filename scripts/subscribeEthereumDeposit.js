@@ -89,7 +89,7 @@ const TOPIC_CENNZnet_CONFIRM = 'STATE_CENNZ_CONFIRM';
 
 // subscribe ETH confirm event and send claim on CENNZnet
 PubSub.subscribe(TOPIC_ETH_CONFIRM, sendCENNZnetClaimSubscriber);
-// subscribe CENNZnet confirm event and send claim on CENNZnet
+// subscribe CENNZnet confirm event and check in next 5 blocks if proof is valid/invalid (verify claim)
 PubSub.subscribe(TOPIC_CENNZnet_CONFIRM, verifyClaimSubscriber);
 
 async function sendCENNZnetClaimSubscriber(msg, data) {
