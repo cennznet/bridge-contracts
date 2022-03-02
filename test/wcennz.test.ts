@@ -193,18 +193,18 @@ describe('Erc20Peg', () => {
 
         let transferAmount = 9;
         let recipient = '0xa86e122EdbDcBA4bF24a2Abf89F5C230b37DF49d';
-        let approvedAccount = '0x430abA96F6E32B528CDCc18ad01b7f484C628819';
 
         expect(recipient).not.equals(wallet.address);
         let recipientBalanceBeforeTransfer = await wrappedCENNZ.balanceOf(recipient);
         expect(recipientBalanceBeforeTransfer).to.equal(0);
 
         await wrappedCENNZ.approve(
-            approvedAccount,
+            walletTo.address,
             transferAmount
         );
+        const approvedAccount = wrappedCENNZ.connect(walletTo);
 
-        estimatedGas = await wrappedCENNZ.estimateGas.transferFrom(
+        estimatedGas = await approvedAccount.estimateGas.transferFrom(
             wallet.address,
             recipient,
             transferAmount,
@@ -212,17 +212,12 @@ describe('Erc20Peg', () => {
                 gasLimit: 500000,
             }
         );
-        const infuraProvider = new ethers.providers.InfuraProvider(process.env.ETH_NETWORK,
-            process.env.INFURA_API_KEY
-        );
-        let approvedWallet = new ethers.Wallet(process.env.ETH_ACCOUNT_KEY, infuraProvider);
-        await wrappedCENNZ.transferFrom(
+        await approvedAccount.transferFrom(
             wallet.address,
             recipient,
             transferAmount,
             {
-                gasLimit: estimatedGas,
-                from: approvedWallet
+                gasLimit: estimatedGas
             },
         );
 

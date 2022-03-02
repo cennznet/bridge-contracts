@@ -17,13 +17,7 @@ contract WrappedCENNZ is ERC20 {
         if (msg.sender == pegAddress) {
             _burn(owner, numTokens);
         } else {
-            _transfer(owner, buyer, numTokens);
-
-            uint256 currentAllowance = _allowances[owner][_msgSender()];
-            require(currentAllowance >= numTokens, "ERC20: transfer amount exceeds allowance");
-            unchecked {
-                _approve(owner, _msgSender(), currentAllowance - numTokens);
-            }
+            super.transferFrom(owner, buyer, numTokens);
         }
         return true;
     }
