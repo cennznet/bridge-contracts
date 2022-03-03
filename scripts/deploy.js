@@ -13,6 +13,12 @@ async function main() {
   await peg.deployed();
   console.log("CENNZnet erc20peg deployed to:", peg.address);
 
+  const WrappedCennz = await ethers.getContractFactory("WrappedCENNZ");
+  console.log("Deploying CENNZnet WrappedCENNZ contract...");
+  const wrappedCennz = await WrappedCennz.deploy(erc20Peg.address);
+  await wrappedCennz.deployed();
+  console.log("CENNZnet WrappedCENNZ deployed to:", wrappedCennz.address);
+
   const TestToken = await ethers.getContractFactory("TestToken");
   console.log("Deploying TestToken contract...");
   const token = await TestToken.deploy(ethers.utils.parseUnits("1000000"));
