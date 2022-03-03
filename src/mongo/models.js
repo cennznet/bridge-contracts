@@ -10,6 +10,18 @@ const WITHDRAW_PROOF = 'withdraw_proof';
 
 const EVENT_PROOF = 'event_proof';
 
+const CLAIM_EVENTS = 'claim_events'
+
+const ClaimEventsSchema = new Schema({
+    _id: String, // tx hash (Ethereum)
+    tokenAddress: String,
+    amount: String,
+    beneficiary: String,
+    claimId: String,
+    blockNumber: String // block number on cennznet when this claim was sent
+}, { collection: CLAIM_EVENTS });
+
+
 const BridgeClaimSchema = new Schema({
     _id: String,
     txHash: String, // txHash from ethereum bridge contract - deposit
@@ -52,6 +64,9 @@ module.exports = {
     BridgeClaim: mongoose.model('BridgeClaim', BridgeClaimSchema),
     BRIDGE_CLAIM,
     EventProcessed: mongoose.model('EventProcessed', EventProcessedSchema),
+    EVENT_PROCESSED,
+    ClaimEvents: mongoose.model('ClaimEvents',ClaimEventsSchema),
+    CLAIM_EVENTS
     EVENT_PROCESSED,
     WithdrawProof: mongoose.model('WithdrawProof', WithdrawProofSchema),
     WITHDRAW_PROOF,
