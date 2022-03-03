@@ -26,4 +26,8 @@ contract WrappedCENNZ is ERC20 {
         }
         return super.transfer(buyer, numTokens);
     }
+
+    function decimals() public pure override returns (uint8) {
+        return 4;
+    }
 }

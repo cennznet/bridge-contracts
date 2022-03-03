@@ -15,7 +15,7 @@ async function main() {
 
   const WrappedCennz = await ethers.getContractFactory("WrappedCENNZ");
   console.log("Deploying CENNZnet WrappedCENNZ contract...");
-  const wrappedCennz = await WrappedCennz.deploy(erc20Peg.address);
+  const wrappedCennz = await WrappedCennz.deploy(peg.address);
   await wrappedCennz.deployed();
   console.log("CENNZnet WrappedCENNZ deployed to:", wrappedCennz.address);
 
