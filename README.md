@@ -7,8 +7,42 @@ Provides external `verifyMessage` to allow other contracts to prove messages wer
 
 __ERC20 Peg__  
 Manages a Generic Asset - ERC20 peg using the CENNZnet ethereum bridge.  
-Deposited ERC20 tokens are claimable on CENNZnet for GA equivalents.  
+Deposited ERC20 tokens (and native Eth) are claimable on CENNZnet for GA equivalents.  
 Withdrawing GA equivalents requires a signed proof from CENNZnet validators.  
+
+
+## Deployments
+```js
+// deployed contract instances
+const MAINNET_V1 = {
+    bridge: "0x369e2285CCf43483e76746cebbf3d1d6060913EC",
+    peg: "0x8F68fe02884b2B05e056aF72E4F2D2313E9900eC",
+};
+const MAINNET_V2 = {
+    bridge: "0xf7997B93437d5d2AC226f362EBF0573ce7a53930",
+    peg: "0x76BAc85e1E82cd677faa2b3f00C4a2626C4c6E32",
+};
+const KOVAN_V1 = {
+    bridge: "0x9AFe4E42d8ab681d402e8548Ee860635BaA952C5",
+    peg: "0x5Ff2f9582FcA1e11d47e4e623BEf4594EB12b30d",
+};
+const KOVAN_V2 = {
+    bridge: "0x6484A31Df401792c784cD93aAAb3E933B406DdB3",
+    peg: "0xa39E871e6e24f2d1Dd6AdA830538aBBE7b30F78F",
+    wcennz: "0xB7e26f93211932865430a03236Dd043F7248993b,"
+};
+
+const ROPSTEN_V1 = {
+    bridge: "0x25b53B1bDc5F03e982c383865889A4B3c6cB98AA",
+    peg: "0x927a710681B63b0899E28480114Bf50c899a5c27",
+};
+
+const ROPSTEN_V2 = {
+    bridge: "0x452b8dd7b00D51e48cEF6254a48B7426d44658B8",
+    peg: "0x4C411B3Bf36D6DE908C6f4256a72B85E3f2B00bF",
+    wcennz: "0xcdA767469D434c14D320e1A78D5b612B72B52bf0",
+}
+```
 
 ## Dev Setup
 start a CENNZnet validator node.  
@@ -32,33 +66,6 @@ yarn deploy
 
 # run a test eth deposit
 yarn eth_e2e
-```
-
-## Mainnet
-```bash
-bridge: 0x369e2285CCf43483e76746cebbf3d1d6060913EC
-erc20peg: 0x8F68fe02884b2B05e056aF72E4F2D2313E9900eC
-```
-
-## Kovan
-```bash
-bridge: 0x9AFe4E42d8ab681d402e8548Ee860635BaA952C5
-erc20peg: 0x5Ff2f9582FcA1e11d47e4e623BEf4594EB12b30d
-wcennz: 0xB7e26f93211932865430a03236Dd043F7248993b
-```
-
-## Ropsten
-```bash
-bridge: 0x25b53B1bDc5F03e982c383865889A4B3c6cB98AA
-erc20peg: 0x927a710681B63b0899E28480114Bf50c899a5c27
-wcennz: 0xcdA767469D434c14D320e1A78D5b612B72B52bf0
-```
-
-## Rinkeby
-```bash
-bridge: 0x75a2488b80D1a12cB0209cB1C40986863745Ee2f
-erc20peg: 0xa3205266ebBd74298729e04a28b8Fa53B5319679
-gnosis safe: 0x676Eb4346D59ce8D673D4bFF167ffBf63D77dF46
 ```
 
 ## Publish contract

@@ -257,6 +257,8 @@ describe('CENNZnetBridge', () => {
     let signature = utils.splitSignature(
       utils.hexlify('0x384fdafa02121ca2333611a0e27ece130797fd34d7712ddcd29633f60fbc424c3ce5247416b7c887b68ffe428573750346612a78939251ed8d072999aed11ccf01')
     );
+    // here validators set [] is current set of validators signning for the list of new validators addresses.. In case of dev chain it remains the same to nextNotaryKeys = notaryKeys
+    // use notary key for proof and next notary key when calling set validator function
     let setValidatorProof = {
         eventId: 0,
         validatorSetId: 0,
