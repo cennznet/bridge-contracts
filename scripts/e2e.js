@@ -158,7 +158,7 @@ async function main() {
             console.log(`Waiting till event proof is fetched....`);
             const versionedEventProof = (await api.rpc.ethy.getEventProof(eventProofId)).toJSON();
             if (versionedEventProof !== null) {
-                eventProof = versionedEventProof.EventProof;
+                eventProof = versionedEventProof.eventProof;
                 console.log('Event proof found;::', eventProof);
                 unsubHeads();
                 resolve();
