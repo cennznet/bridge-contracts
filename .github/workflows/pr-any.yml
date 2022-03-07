@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [12.x]
+        node-version: [16.x]
     steps:
     - uses: actions/checkout@v1
     - uses: styfle/cancel-workflow-action@0.6.0
@@ -47,7 +47,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [12.x]
+        node-version: [16.x]
     steps:
     - uses: actions/checkout@v1
     - name: Use Node.js ${{ matrix.node-version }}
@@ -77,7 +77,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [12.x]
+        node-version: [16.x]
     steps:
     - uses: actions/checkout@v1
     - name: Use Node.js ${{ matrix.node-version }}
@@ -107,7 +107,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [12.x]
+        node-version: [16.x]
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-node@v1
@@ -117,7 +117,7 @@ jobs:
       run: |
         docker network create my-bridge-net
         docker run --pull=always --network=my-bridge-net --name ethNode -p 8545:8545 -p 30303:30303 -d ethereumoptimism/hardhat
-        docker run --pull=always --network=my-bridge-net --name testnet_node_alice -p 9944:9944 -d cennznet/cennznet:2.0.0 --dev --tmp --unsafe-ws-external --unsafe-rpc-external --eth-http=http://ethNode:8545 --no-mdns
+        docker run --pull=always --network=my-bridge-net --name testnet_node_alice -p 9944:9944 -d cennznet/cennznet:2.1.0-rc1 --dev --tmp --unsafe-ws-external --unsafe-rpc-external --eth-http=http://ethNode:8545 --no-mdns
         docker exec testnet_node_alice curl ethNode:8545
     # - name: deposit/withdraw scenarios for erc20 tokens
     #   env:

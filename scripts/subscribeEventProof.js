@@ -114,7 +114,14 @@ async function main (networkName, bridgeContractAddress) {
 
     const provider = process.env.WS_PROVIDER;
     logger.info('Provider::', provider);
-    const api = provider ? await Api.create({provider}): await Api.create({network: networkName});
+    let api;
+    if (provider) { // for azalea we connect via provider
+        api = await Api.create({provider});
+    } else if (networkName === 'nikau') {
+        api = await Api.create({provider: 'https://nikau.centrality.me/public/ws'})
+    } else {
+        api = await Api.create({provider: 'https://rata.centrality.me/public/ws'})
+    }
     logger.info(`Connect to cennznet network ${networkName}`);
 
     const infuraProvider = new ethers.providers.InfuraProvider(process.env.ETH_NETWORK,

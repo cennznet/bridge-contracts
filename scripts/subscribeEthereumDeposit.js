@@ -7,7 +7,7 @@ const mongoose = require('mongoose');
 const { BridgeClaim  } = require('../src/mongo/models');
 const ethers = require('ethers');
 const { curly } = require("node-libcurl");
-const { hexToU8a } = require("@cennznet/util");
+const { hexToU8a } = require("@polkadot/util");
 const pegAbi = require("../abi/ERC20Peg.json").abi;
 const airDropAmount = 50000;
 
@@ -81,16 +81,20 @@ async function main (networkName, pegContractAddress) {
     const connectionStr = process.env.MONGO_URI;
     await mongoose.connect(connectionStr);
 
-    const api = await Api.create({network: networkName});
-    logger.info(`Connect to cennznet network ${networkName}`);
-
+    let api;
     let provider;
     if (networkName === 'azalea') {
         provider = new ethers.providers.AlchemyProvider(process.env.ETH_NETWORK,
             process.env.AlCHEMY_API_KEY
         );
+        api = await Api.create({network: networkName});
     } else {
         provider = new ethers.providers.InfuraProvider(process.env.ETH_NETWORK, process.env.INFURA_API_KEY);
+        if (networkName === 'nikau') {
+            api = await Api.create({provider: 'https://nikau.centrality.me/public/ws'})
+        } else {
+            api = await Api.create({provider: 'https://rata.centrality.me/public/ws'})
+        }
     }
 
     const keyring = new Keyring({type: 'sr25519'});
