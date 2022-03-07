@@ -81,9 +81,6 @@ async function main (networkName, pegContractAddress) {
     const connectionStr = process.env.MONGO_URI;
     await mongoose.connect(connectionStr);
 
-    // const api = await Api.create({network: networkName});
-    // logger.info(`Connect to cennznet network ${networkName}`);
-
     let api;
     let provider;
     if (networkName === 'azalea') {
