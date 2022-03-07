@@ -91,9 +91,9 @@ async function main (networkName, pegContractAddress) {
     } else {
         provider = new ethers.providers.InfuraProvider(process.env.ETH_NETWORK, process.env.INFURA_API_KEY);
         if (networkName === 'nikau') {
-            api = await Api.create({provider: 'https://nikau.centrality.me/public/ws'})
+            api = await Api.create({provider: 'wss://nikau.centrality.me/public/ws'})
         } else {
-            api = await Api.create({provider: 'https://rata.centrality.me/public/ws'})
+            api = await Api.create({provider: 'wss://rata.centrality.me/public/ws'})
         }
     }
 
