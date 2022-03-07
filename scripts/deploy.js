@@ -1,5 +1,6 @@
 const { ethers } = require("hardhat");
 // deploy contracts for test
+// PLEASE ADD ANY CODE AT THE END OF THE FILE, THIS WILL LET API BRIDGE TEST RUN SMOOTHLY
 async function main() {
   const Bridge = await ethers.getContractFactory("CENNZnetBridge");
   console.log("Deploying CENNZnet bridge contract...");
