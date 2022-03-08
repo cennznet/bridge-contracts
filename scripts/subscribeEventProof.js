@@ -118,9 +118,10 @@ async function main (networkName, bridgeContractAddress) {
     if (provider) { // for azalea we connect via provider
         api = await Api.create({provider});
     } else if (networkName === 'nikau') {
-        api = await Api.create({provider: 'https://nikau.centrality.me/public/ws'})
+        api = await Api.create({provider: 'wss://nikau.centrality.me/public/ws'})
     } else {
-        api = await Api.create({provider: 'https://rata.centrality.me/public/ws'})
+        console.log('connecting rata..');
+        api = await Api.create({provider: 'wss://rata.centrality.me/public/ws'})
     }
     logger.info(`Connect to cennznet network ${networkName}`);
 
