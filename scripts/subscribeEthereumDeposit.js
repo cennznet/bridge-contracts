@@ -113,23 +113,20 @@ async function main (networkName, pegContractAddress) {
     peg.on("Deposit", async (sender, tokenAddress, amount, cennznetAddress, eventInfo) => {
         logger.info(`Got the event...${JSON.stringify(eventInfo)}`);
         logger.info('*****************************************************');
-        const checkIfBridgePause = await api.query.ethBridge.bridgePaused();
-        if (!checkIfBridgePause.toHuman()) {
-            await updateTxStatusInDB('EthereumConfirming', eventInfo.transactionHash, null, cennznetAddress);
-            const tx = await eventInfo.getTransaction();
-            await tx.wait(eventConfirmation + 1);
-            const claim = {
-                tokenAddress,
-                amount: amount.toString(),
-                beneficiary: cennznetAddress
-            };
-            try {
-                let nonce = (await api.rpc.system.accountNextIndex(claimer.address)).toNumber();
-                console.log('Nonce:::', nonce);
-                await sendClaim(claim, eventInfo.transactionHash, api, claimer, nonce++);
-            } catch (e) {
-                console.log('err:', e);
-            }
+        await updateTxStatusInDB('EthereumConfirming', eventInfo.transactionHash, null, cennznetAddress);
+        const tx = await eventInfo.getTransaction();
+        await tx.wait(eventConfirmation + 1);
+        const claim = {
+            tokenAddress,
+            amount: amount.toString(),
+            beneficiary: cennznetAddress
+        };
+        try {
+            let nonce = (await api.rpc.system.accountNextIndex(claimer.address)).toNumber();
+            console.log('Nonce:::', nonce);
+            await sendClaim(claim, eventInfo.transactionHash, api, claimer, nonce++);
+        } catch (e) {
+            console.log('err:', e);
         }
     });
 
