@@ -51,7 +51,8 @@ async function main() {
 
     /***************** CENNZnet Setup **********************/
         // connecting to local chain
-    const api = await Api.create();
+    const networkName = process.env.NETWORK || 'local';
+    const api = await Api.create({network: networkName});
     const keyring = new Keyring({type: 'sr25519'});
     const alice = keyring.addFromUri('//Alice');
 

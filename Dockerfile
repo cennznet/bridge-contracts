@@ -1,4 +1,7 @@
 FROM node:16.5.0-alpine
+ENV workdir /app
+WORKDIR ${workdir}
+
 ENV PYCURL_SSL_LIBRARY=openssl
 RUN apk add --no-cache --virtual .build-deps build-base python3-dev py3-pip git \
     # keep libcurl in the image
