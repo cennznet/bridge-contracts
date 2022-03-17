@@ -44,6 +44,19 @@ async function updateLastEventProcessed(eventId, blockHash) {
     await EventProcessed.updateOne(filter, update, options);
 }
 
+async function sendSlackNotification(message) {
+    const {statusCode, data} = await curly.post(`https://hooks.slack.com/services/${process.env.SLACK_SECRET}`, {
+        postFields: JSON.stringify({
+            "text": message
+        }),
+        httpHeader: [
+            'Content-Type: application/json',
+            'Accept: application/json'
+        ],
+    });
+    logger.info(`Slack notification sent ${data} and status code ${statusCode}`);
+}
+
 // Submit the event proof on Ethereum Bridge contract
 async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, newValidatorSetId, blockHash, provider) {
     const eventExistsOnEth = await bridge.eventIds(eventId.toString());
@@ -85,20 +98,19 @@ async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, newValida
             const gasRequired = gasEstimated.mul(gasPrice);
             logger.info(`IMP Gas required: ${gasRequired.toString()}`);
             if (balance.lt(gasRequired.mul(2))) {
-                const {statusCode, data} = await curly.post(`https://hooks.slack.com/services/${process.env.SLACK_SECRET}`, {
-                    postFields: JSON.stringify({
-                        "text": ` 🚨 To keep the validator relayer running, topup the eth account ${txExecutor.address} on CENNZnets ${process.env.NETWORK} chain`
-                    }),
-                    httpHeader: [
-                        'Content-Type: application/json',
-                        'Accept: application/json'
-                    ],
-                });
-                logger.info(`Slack notification sent ${data} and status code ${statusCode}`);
+                const message = ` 🚨 To keep the validator relayer running, topup the eth account ${txExecutor.address} on CENNZnets ${process.env.NETWORK} chain`;
+                await sendSlackNotification(message);
             }
         } catch (e) {
-                logger.warn('Something went wrong:');
-                logger.error(`IMP Error: ${e.stack}`);
+            logger.warn('Something went wrong:');
+            logger.error(`IMP Error: ${e.stack}`);
+            // send slack notification when proof submission fails
+            const message = ` 🚨 Issue while submitting validator set on ethereum bridge 
+                    proof: ${JSON.stringify(proof)} 
+                    newValidators: ${newValidators}
+                    newValidatorSetId: ${newValidatorSetId}
+                    on CENNZnets ${process.env.NETWORK} chain`;
+            await sendSlackNotification(message);
         }
     } else if (!eventProof){
         logger.info(`IMP Could not retrieve event proof for event id ${eventId} from derived
