@@ -21,6 +21,7 @@
     "scan:event": "node scripts/scanEventsFromUncover.js",
     "claimRelayer": "node scripts/subscribeEthereumDeposit.js",
     "publish": "npx hardhat verify --network $1 $2",
+    "withdrawListener": "node scripts/subscribeWithdrawTx.js",
     "test": "yarn build && env TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\", \"esModuleInterop\": true, \"resolveJsonModule\": true, \"types\": [\"@types/mocha\"] }' mocha -r ts-node/register 'test/**/*.test.ts'"
   },
   "resolutions": {

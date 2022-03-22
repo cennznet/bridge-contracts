@@ -44,7 +44,8 @@ const proofsSchema = new Schema( {
     validatorSetId: String,
     r: [],
     s: [],
-    v: []
+    v: [],
+    validators: []
 }, { collection: EVENT_PROOF });
 
 module.exports = {
