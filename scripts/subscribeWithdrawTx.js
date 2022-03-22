@@ -76,8 +76,6 @@ async function getWithdrawProofAndUpdateDB(api, eventDetails, blockHash, bridge)
         let amount = api.registry.createType('Balance', amountRaw).toString();
         const eventProof = await withTimeout(api.derive.ethBridge.eventProof(eventId), timeoutMs);
         const newValidators = await extractValidators(api, blockHash);
-        console.log('newValidators:::',newValidators);
-        console.log('newValidators:::')
         logger.info(`IMP WITHDRAW Parameters :::`);
         logger.info(`IMP WITHDRAW newValidators:${newValidators}`);
         logger.info(`IMP WITHDRAW event proof::${JSON.stringify(eventProof)}`);
@@ -189,7 +187,6 @@ async function main (networkName, bridgeContractAddress, pegContractAddress) {
             events.map(async ({event}) => {
                 const { section, method, data } = event;
                 if  (section === 'erc20Peg' && method == 'Erc20Withdraw') {
-                    console.log('Reached here....')
                     await getWithdrawProofAndUpdateDB(api, data.toJSON(), blockHash, bridge);
                 }
             })
