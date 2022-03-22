@@ -2,9 +2,8 @@ const BigNumber = require('bignumber.js')
 const { Api } = require('@cennznet/api');
 require("dotenv").config();
 const logger = require('./logger');
-const { curly } = require("node-libcurl");
 const mongoose = require('mongoose');
-const { EventProcessed, EventProof, WithdrawProof  } = require('../src/mongo/models');
+const { EventProof, WithdrawProof  } = require('../src/mongo/models');
 const { u8aToString } = require('@polkadot/util');
 const ethers = require('ethers');
 const bridgeAbi = require("../abi/CENNZnetBridge.json").abi;
