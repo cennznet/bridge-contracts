@@ -154,8 +154,10 @@ async function main (networkName, bridgeContractAddress, pegContractAddress) {
     const api = provider ? await Api.create({provider}): await Api.create({network: networkName});
     logger.info(`Connect to cennznet network ${networkName}`);
 
+    // We are using new alchemy key for withdraw to limit the usage, if key does not exist use old one
+    const AlCHEMY_API_KEY = process.env.AlCHEMY_API_KEY_2 ?  process.env.AlCHEMY_API_KEY_2 : process.env.AlCHEMY_API_KEY;
     const wsProvider = new ethers.providers.AlchemyProvider(process.env.ETH_NETWORK,
-            process.env.AlCHEMY_API_KEY
+        AlCHEMY_API_KEY
         );
 
     const pegContract = new ethers.Contract(pegContractAddress, pegAbi, wsProvider);
