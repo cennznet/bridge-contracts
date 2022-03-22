@@ -17,7 +17,6 @@ const IGNORE_KEY = '0x0000000000000000000000000000000000000000000000000000000000
 // Get the notary key from CENNZnet and convert it to public key to be used to set validator on bridge contract
 async function  extractValidators(api, blockHash) {
     const notaryKeys = await api.query.ethBridge.notaryKeys.at(blockHash);
-    console.log('notaryKeys:',notaryKeys);
     const newValidators = notaryKeys.map((notaryKey) => {
         if (notaryKey.toString() === IGNORE_KEY) return '0x0000000000000000000000000000000000000000';
         let decompressedPk = ethers.utils.computePublicKey(notaryKey);
@@ -105,12 +104,6 @@ async function getWithdrawProofAndUpdateDB(api, eventDetails, blockHash, bridge)
         const cennnznetBlockTimeSec = 5;
         let remainingSecsTillExpires = currentProofTTLEras * cennznetEraTimeSeconds;
         //check how much time passed in current cennznet epoch
-        // const response = await axios.get(
-        //     `${process.env.UNCOVER_URI}/cennznet-explorer-api/api/scan/events?moduleId=ethBridge&eventId=AuthoritySetChange&row=100&page=0`
-        // );
-        // const uncoverEventsData = response.data;
-        // let uncoverEvents = uncoverEventsData.data;
-        // const lastEraBlockNum = uncoverEvents[uncoverEvents.length - 1].block_num;
         const sessionProgress = await api.derive.session.progress();
         const blocksElapsedInCurrentEra = sessionProgress.eraProgress.toNumber();
         const secElapsedInCurrentEra = blocksElapsedInCurrentEra * cennnznetBlockTimeSec;
