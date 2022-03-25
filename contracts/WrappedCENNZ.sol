@@ -6,12 +6,10 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Pausable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
 contract WrappedCENNZ is ERC20, ERC20Pausable, AccessControl {
-    // CENNZnet ERC20 peg address
-    address public pegAddress;
+    /** @dev The minter role is the role that is allowed to mint/burn */
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     constructor(address _pegAddress) ERC20("Wrapped CENNZ", "WCENNZ") {
-        pegAddress = _pegAddress;
         // Grant the peg address the role to mint
         _setupRole(MINTER_ROLE, _pegAddress);
         // Grant the contract deployer the default admin role: it will be able
@@ -70,7 +68,7 @@ contract WrappedCENNZ is ERC20, ERC20Pausable, AccessControl {
     function unpause() public onlyRole(DEFAULT_ADMIN_ROLE) {
       _unpause();
     }
-    
+
     /** @dev Interfaces ERC20Pausable. */
     function _beforeTokenTransfer(
         address from,
