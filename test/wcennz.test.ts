@@ -140,7 +140,7 @@ describe('Erc20Peg', () => {
     });
 
     it('approve and transfer wrapped CENNZ', async () => {
-        let withdrawalAmount = 100;
+        let withdrawalAmount = 10;
         let userBalanceStart = await wrappedCENNZ.balanceOf(wallet.address);
         await wrappedCENNZ.approve(erc20Peg.address, withdrawalAmount);
 
