@@ -51,6 +51,7 @@
     "dotenv": "^8.2.0",
     "elliptic": "^6.5.4",
     "ethereum-waffle": "^3.4.0",
+    "ioredis": "^5.0.1",
     "moment": "^2.29.1",
     "node-libcurl": "^2.3.3",
     "winston": "^3.2.1"
@@ -63,6 +64,8 @@
     "@nomiclabs/hardhat-etherscan": "^2.1.7",
     "@nomiclabs/hardhat-waffle": "^2.0.1",
     "@openzeppelin/contracts": "^4.4.2",
+    "@polkadot/keyring": "5.9.2",
+    "@polkadot/util": "5.9.2",
     "@types/node": "^16.7.13",
     "bignumber.js": "^7.2.1",
     "chai": "^4.3.4",
