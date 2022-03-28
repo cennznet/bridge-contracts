@@ -84,8 +84,8 @@ async function sendClaim(claim, transactionHash, api, signer, nonce, redis) {
                         console.log('CLAIM: Deposit claim on CENNZnet side started for claim Id', eventClaimId.toString());
                         await updateTxStatusInDB( 'CennznetConfirming', transactionHash, eventClaimId, claim.beneficiary);
                         await updateClaimEventsBlock({txHash: transactionHash, claimId: eventClaimId, blockNumber})
-                        const pubData = { eventClaimId, api, blockNumber, claimer: signer };
-                        await redis.publish(TOPIC_CENNZnet_CONFIRM, JSON.stringify(pubData));
+                        const pubData = { eventClaimId, blockNumber, claimer: signer };
+                        await redis.publish(TOPIC_ETH_CONFIRM, JSON.stringify(pubData));
                         resolve(eventClaimId);
                     }
                     else if (section === 'system' && method === 'ExtrinsicFailed') {
@@ -116,8 +116,8 @@ async function sendCENNZnetClaimSubscriber(data, redis, api, provider) {
     }
 }
 
-// This is subscribed after the claim it sent on CENNZnet, it knows the blocknumber at which claim was sent
-// and it waits for 5 more finalized blocks and check if the claim was verified in these 10 blocks and updates the db
+// This is subscribed after the claim is sent on CENNZnet, it knows the blocknumber at which claim was sent
+// and it waits for 10 more finalized blocks and check if the claim was verified in these 10 blocks and updates the db
 async function verifyClaimSubscriber(data, api) {
     const { eventClaimId, claimer, blockNumber } = JSON.parse(data);
     const intervalSecond = 5;
@@ -173,7 +173,7 @@ async function wait(seconds) {
 }
 
 
-// Fetch from db all transaction with EthereumConfirming status and add them to the queue 'TOPIC_ETH_CONFIRM'
+// Fetch from db all transaction with EthereumConfirming status and add them to the queue 'TOPIC_ETH_CONFIRM' in case missed
 async function pushEthConfirmRecords(api, provider, claimer, eventConfirmation, redis, blockNumber) {
     const recordWithEthConfirm = await BridgeClaim.find({status: 'EthereumConfirming'});
     console.log('recordWithEthConfirm status:',recordWithEthConfirm);
@@ -224,7 +224,7 @@ async function mainPublisher(networkName, pegContractAddress) {
 
     const redis = new Redis();
 
-    const api = await Api.create({network: networkName});
+    let api = await Api.create({network: networkName});
     logger.info(`Connect to cennznet network ${networkName}`);
 
     let provider;
@@ -261,8 +261,8 @@ async function mainPublisher(networkName, pegContractAddress) {
     const eventConfirmation = (await api.query.ethBridge.eventConfirmations()).toNumber();
     logger.info(`eventConfirmation::${eventConfirmation}`);
 
-    await pushEthConfirmRecords(api, provider, claimer, eventConfirmation, redis, latestFinalizedBlockNumber);
-    await pushCennznetConfirmRecords(api, provider, claimer, redis);
+    // await pushEthConfirmRecords(api, provider, claimer, eventConfirmation, redis, latestFinalizedBlockNumber);
+    // await pushCennznetConfirmRecords(api, provider, claimer, redis);
 
 
     // On eth side deposit push pub sub queue with the data, if bridge is paused, update tx status as bridge paused
@@ -272,8 +272,8 @@ async function mainPublisher(networkName, pegContractAddress) {
         const checkIfBridgePause = await api.query.ethBridge.bridgePaused();
         if (!checkIfBridgePause.toHuman()) {
             await updateTxStatusInDB('EthereumConfirming', eventInfo.transactionHash, null, cennznetAddress);
-            const tx = await eventInfo.getTransaction();
-            await tx.wait(eventConfirmation + 1);
+            // const tx = await eventInfo.getTransaction();
+            // await tx.wait(eventConfirmation + 1);
             const claim = {
                 tokenAddress,
                 amount: amount.toString(),
@@ -281,7 +281,7 @@ async function mainPublisher(networkName, pegContractAddress) {
             };
             await updateClaimEventsInDB({txHash: eventInfo.transactionHash, tokenAddress, amount, beneficiary: cennznetAddress});
             const data = { txHash: eventInfo.transactionHash, claim, confirms: eventConfirmation, claimer, blockNumber:latestFinalizedBlockNumber }
-            await redis.publish(TOPIC_ETH_CONFIRM, JSON.stringify(data));
+            await redis.publish(TOPIC_CENNZnet_CONFIRM, JSON.stringify(data));
             console.log("Published %s to %s", data, TOPIC_ETH_CONFIRM);
         } else {
             await updateTxStatusInDB('Bridge Paused', eventInfo.transactionHash, null, cennznetAddress);

@@ -66,8 +66,7 @@ module.exports = {
     EventProcessed: mongoose.model('EventProcessed', EventProcessedSchema),
     EVENT_PROCESSED,
     ClaimEvents: mongoose.model('ClaimEvents',ClaimEventsSchema),
-    CLAIM_EVENTS
-    EVENT_PROCESSED,
+    CLAIM_EVENTS,
     WithdrawProof: mongoose.model('WithdrawProof', WithdrawProofSchema),
     WITHDRAW_PROOF,
     EventProof: mongoose.model('EventProof', proofsSchema),
