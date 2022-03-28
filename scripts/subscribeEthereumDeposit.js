@@ -66,10 +66,14 @@ async function updateClaimInDB(claimId, status) {
     logger.info(`CLAIM Updated the bridge status ${status} for claimId: ${claimId}`);
 }
 
-async function sendClaim(claim, transactionHash, api, signer, nonce, redis) {
+async function sendClaim(claim, transactionHash, api, nonce, redis) {
     return new Promise(  (resolve, reject) => {
         console.log('CLAIM: Nonce is ::::', nonce);
+        const keyring = new Keyring({type: 'sr25519'});
+        const seed = hexToU8a(process.env.CENNZNET_SECRET);
+        const signer = keyring.addFromSeed(seed);
         api.tx.erc20Peg.depositClaim(transactionHash, claim).signAndSend(signer, { nonce }, async ({status, events}) => {
+            console.log('status::::', status.isInBlock);
             if (status.isInBlock) {
                 const blockHash = status.asInBlock;
                 const block = await api.rpc.chain.getBlock(blockHash);
@@ -85,6 +89,7 @@ async function sendClaim(claim, transactionHash, api, signer, nonce, redis) {
                         await updateTxStatusInDB( 'CennznetConfirming', transactionHash, eventClaimId, claim.beneficiary);
                         await updateClaimEventsBlock({txHash: transactionHash, claimId: eventClaimId, blockNumber})
                         const pubData = { eventClaimId, blockNumber, claimer: signer };
+                        console.info("pubData", pubData);
                         await redis.publish(TOPIC_ETH_CONFIRM, JSON.stringify(pubData));
                         resolve(eventClaimId);
                     }
@@ -106,8 +111,8 @@ async function sendCENNZnetClaimSubscriber(data, redis, api, provider) {
     const timeout = 600000; // 10 minutes
     try {
         await provider.waitForTransaction(txHash, confirms+1, timeout); // wait for confirm blocks before sending tx on CENNZnet
-        console.log('CLAIM Nonce:::', nonce);
-        await sendClaim(claim, txHash, api, claimer, nonce++, redis);
+        nonce = (await api.rpc.system.accountNextIndex(claimer.address)).toNumber();
+        await sendClaim(claim, txHash, api,nonce+ 2, redis);
     } catch (e) {
         console.log('err:', e);
         if (e.message == 'timeout exceeded') {
@@ -131,14 +136,10 @@ async function verifyClaimSubscriber(data, api) {
     try {
         //loop through next 10 blocks to see if the claim is verified
         for (let i = blockNumber; i < blockNumber+blockNumWait; i++) {
-            console.log('Current block:',i);
-            console.log('finalized at:',latestFinalizedBlockNumber);
             const blockHash = await api.rpc.chain.getBlockHash(i);
             const events = await api.query.system.events.at(blockHash);
             events.map(async ({event}) => {
                 const { section, method, data } = event;
-                console.info("section", section)
-                console.info("method", method)
                 if (section === 'ethBridge' && method === 'Verified') {
                     const claimId = data[0];
                     console.log('ClaimId::::', claimId.toString());
@@ -272,8 +273,6 @@ async function mainPublisher(networkName, pegContractAddress) {
         const checkIfBridgePause = await api.query.ethBridge.bridgePaused();
         if (!checkIfBridgePause.toHuman()) {
             await updateTxStatusInDB('EthereumConfirming', eventInfo.transactionHash, null, cennznetAddress);
-            // const tx = await eventInfo.getTransaction();
-            // await tx.wait(eventConfirmation + 1);
             const claim = {
                 tokenAddress,
                 amount: amount.toString(),
@@ -290,7 +289,10 @@ async function mainPublisher(networkName, pegContractAddress) {
 }
 
 async function mainSubscriber(networkName) {
+    const connectionStr = process.env.MONGO_URI;
+    await mongoose.connect(connectionStr);
     const redis = new Redis();
+    const redisPub = new Redis();
     const api = await Api.create({network: networkName});
     logger.info(`Connect to cennznet network ${networkName}`);
 
@@ -332,7 +334,7 @@ async function mainSubscriber(networkName) {
         }
         else if (channel === TOPIC_CENNZnet_CONFIRM){
             console.log(`Received ${message} from ${channel}`);
-            sendCENNZnetClaimSubscriber(message, redis, api, provider);
+            sendCENNZnetClaimSubscriber(message, redisPub, api, provider);
         }
     });
 }
