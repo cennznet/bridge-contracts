@@ -1,5 +1,4 @@
 const { Api } = require('@cennznet/api');
-require("dotenv").config();
 const { Keyring } = require('@polkadot/keyring');
 const logger = require('./logger');
 const mongoose = require('mongoose');
@@ -9,6 +8,8 @@ const { curly } = require("node-libcurl");
 const { hexToU8a } = require("@polkadot/util");
 const pegAbi = require("../abi/ERC20Peg.json").abi;
 const Redis = require('ioredis');
+
+require("dotenv").config();
 
 async function airDrop(claimId, signer, api, spendingAssetId) {
     const signerBalance = await api.query.genericAsset.freeBalance(spendingAssetId, signer.address);
@@ -21,8 +22,7 @@ async function airDrop(claimId, signer, api, spendingAssetId) {
             nonce +=1;
             await api.tx.genericAsset.transfer(spendingAssetId, cennznetAddress, airDropAmount).signAndSend(signer, { nonce }, async ({status, events}) => {
                 if (status.isInBlock) {
-                    for (const {event: {method, section, data}} of events) {
-                        console.log('\t', `: ${section}.${method}`, data.toString());
+                    for (const {event: {method, section}} of events) {
                         if (section === 'system' && method == 'ExtrinsicSuccess') {
                             logger.info(`Successfully Air dropped First Time reward for address ${cennznetAddress}`);
                         }
@@ -79,26 +79,33 @@ async function updateClaimInDB(claimId, status) {
 async function sendClaim(claim, transactionHash, api, nonce, redis, signer) {
     return new Promise(  (resolve, reject) => {
         api.tx.erc20Peg.depositClaim(transactionHash, claim).signAndSend(signer, { nonce }, async ({status, events}) => {
-            console.log('status::::', status.toString());
             if (status.isInBlock) {
                 const blockHash = status.asInBlock;
                 const block = await api.rpc.chain.getBlock(blockHash);
                 const blockNumber =  block.block.header.number.toNumber();
                 for (const {event: {method, section, data}} of events) {
-                    console.log('\t', `: ${section}.${method}`, data.toString());
                     const [, claimer] = data;
                     if (section === 'erc20Peg' && method == 'Erc20Claim' && claimer && claimer.toString() === signer.address) {
                         const eventClaimId = data[0].toString();
-                        console.log('CLAIM: *******************************************');
-                        console.log('CLAIM: at block number',blockNumber);
-                        console.log('CLAIM: Deposit claim on CENNZnet side started for claim Id', eventClaimId);
+                        logger.info('CLAIM: *******************************************');
+                        logger.info('CLAIM: at block number: ',blockNumber);
+                        logger.info('CLAIM: Deposit claim on CENNZnet side started for claim Id: ', eventClaimId);
                         await updateTxStatusInDB( 'CENNZnetConfirming', transactionHash, eventClaimId, claim.beneficiary);
-                        await updateClaimEventsBlock({txHash: transactionHash, claimId: eventClaimId, blockNumber})
+                        await updateClaimEventsBlock({txHash: transactionHash, claimId: eventClaimId, blockNumber});
                         const pubData = { eventClaimId, blockNumber };
                         await redis.publish(TOPIC_VERIFY_CONFIRM, JSON.stringify(pubData));
                         resolve(eventClaimId);
                     }
                     else if (section === 'system' && method === 'ExtrinsicFailed') {
+                        //check if already sent claim and if so skip to claim verification step
+                        const index = data.toJSON()[0].module.index;
+                        const error = data.toJSON()[0].module.error;
+                        //AlreadyNotarized error. findMetaError is getting out of index atm: `const errorMsg = api.registry.findMetaError({index, error});`
+                        if(index === 22 && error === 6) {
+                            //TODO need to find way of getting claimId from ETH tx has
+                            await updateTxStatusInDB( 'AlreadyNotarized', transactionHash, null, claim.beneficiary);
+                            reject(data.toJSON());
+                        }
                         await updateTxStatusInDB( 'Failed', transactionHash, null, claim.beneficiary);
                         reject(data.toJSON());
                     }
@@ -115,9 +122,12 @@ async function sendCENNZnetClaimSubscriber(data, redis, api, provider, signer) {
     const timeout = 600000; // 10 minutes
     try {
         await provider.waitForTransaction(txHash, confirms+1, timeout); // wait for confirm blocks before sending tx on CENNZnet
+        // this ensures we're not grabbing nonce in the future but can handle concurrency
+        if(!firstMessage) nonce += 1;
+        else firstMessage = false;
         await sendClaim(claim, txHash, api, nonce, redis, signer);
     } catch (e) {
-        logger.error('err:', e);
+        logger.error('Error:', e);
         if (e.message == 'timeout exceeded') {
             await updateTxStatusInDB('EthConfirmationTimeout', txHash, null, claim.beneficiary);
         }
@@ -128,11 +138,10 @@ async function sendCENNZnetClaimSubscriber(data, redis, api, provider, signer) {
 // and it waits for 5 more finalized blocks and check if the claim was verified in these 5 blocks and updates the db
 async function verifyClaimSubscriber(data, api, signer) {
     const { eventClaimId, blockNumber } = JSON.parse(data);
-    const intervalSecond = 5;
+    const blockIntervalSecond = 5;
     const blockNumWait = 5;
     const spendingAssetId = await api.query.genericAsset.spendingAssetId();
-    const blockDiff = blockNumWait - (latestFinalizedBlockNumber - blockNumber); // wait for 5 blocks before checking the events
-    await wait(blockDiff * intervalSecond); // wait for 4*5 = 20 seconds
+    await wait(blockNumWait * blockIntervalSecond);
     try {
         //loop through next 5 blocks to see if the claim is verified
         for (let i = blockNumber; i < blockNumber+blockNumWait; i++) {
@@ -162,14 +171,11 @@ async function verifyClaimSubscriber(data, api, signer) {
 }
 
 // Fetch from db all transaction with EthereumConfirming status and add them to the queue 'TOPIC_VERIFY_CONFIRM' in case missed
-async function pushEthConfirmRecords(api, provider, eventConfirmation, redis, blockNumber) {
+async function pushEthConfirmRecords(api, provider, eventConfirmation, redis) {
     const recordWithEthConfirm = await BridgeClaim.find({status: 'EthereumConfirming'});
-    console.log('recordWithEthConfirm status:',recordWithEthConfirm);
     await Promise.all(
         recordWithEthConfirm.map(async (bridgeClaimRecord) => {
-            console.log('bridgeClaimRecord:::',bridgeClaimRecord);
             const eventDetails = await ClaimEvents.find({_id: bridgeClaimRecord.txHash});
-            console.log('eventDetails::',eventDetails);
             if (eventDetails.length > 0) {
                 const claim = {
                     tokenAddress: eventDetails[0].tokenAddress,
@@ -179,9 +185,8 @@ async function pushEthConfirmRecords(api, provider, eventConfirmation, redis, bl
                 const data = {
                     txHash: bridgeClaimRecord.txHash,
                     claim,
-                    confirms: eventConfirmation,
-                    blockNumber: blockNumber
                 }
+                logger.info(`Previous EthereumConfirming state found for TX ${bridgeClaimRecord.txHash}.`)
                 await redis.publish(TOPIC_CENNZnet_CONFIRM, JSON.stringify(data));
             }
         })
@@ -191,12 +196,11 @@ async function pushEthConfirmRecords(api, provider, eventConfirmation, redis, bl
 // Fetch from db all transaction with CENNZnetConfirming status and add them to the queue 'TOPIC_VERIFY_CONFIRM'
 async function pushCennznetConfirmRecords(api, provider, redis) {
     const recordWithEthConfirm = await BridgeClaim.find({status: 'CENNZnetConfirming'});
-    console.log('recordWithCENNnetConfirm status:',recordWithEthConfirm);
     await Promise.all(
         recordWithEthConfirm.map(async (bridgeClaimRecord) => {
             const eventDetails = await ClaimEvents.find({_id: bridgeClaimRecord.txHash});
             if (eventDetails.length > 0) {
-                const pubData = { eventClaimId: bridgeClaimRecord.claimId, api, blockNumber: eventDetails[0].blockNumber };
+                const pubData = { eventClaimId: bridgeClaimRecord.claimId, blockNumber: eventDetails[0].blockNumber };
                 await redis.publish(TOPIC_VERIFY_CONFIRM, JSON.stringify(pubData));
             }
         })
@@ -239,8 +243,8 @@ async function mainPublisher(networkName, pegContractAddress) {
     const peg = new ethers.Contract(pegContractAddress, pegAbi, provider);
     logger.info(`Connecting to CENNZnet peg contract ${pegContractAddress}...`);
     const eventConfirmation = (await api.query.ethBridge.eventConfirmations()).toNumber();
-    // await pushEthConfirmRecords(api, provider, eventConfirmation, redis, latestFinalizedBlockNumber);
-    // await pushCennznetConfirmRecords(api, provider, redis);
+    await pushEthConfirmRecords(api, provider, eventConfirmation, redis);
+    await pushCennznetConfirmRecords(api, provider, redis);
 
     // On eth side deposit push pub sub queue with the data, if bridge is paused, update tx status as bridge paused
     peg.on("Deposit", async (sender, tokenAddress, amount, cennznetAddress, eventInfo) => {
@@ -274,9 +278,6 @@ async function mainSubscriber(networkName) {
     const seed = hexToU8a(process.env.CENNZNET_SECRET);
     const signer = keyring.addFromSeed(seed);
     nonce = (await api.rpc.system.accountNextIndex(signer.address)).toNumber();
-    // this ensures we're not grabbing nonce in the future but can handle concurrency
-    if(!firstMessage) nonce += 1;
-    else firstMessage = false;
     let provider;
     if (networkName === 'azalea') {
         provider = new ethers.providers.AlchemyProvider(process.env.ETH_NETWORK,
@@ -307,7 +308,7 @@ async function mainSubscriber(networkName) {
             logger.info(`At blocknumber: ${blockNumber}`);
             latestFinalizedBlockNumber = blockNumber;
         });
-
+    // listen for messages from publisher
     redis.on("message", (channel, message) => {
         try {
             if (channel === TOPIC_CENNZnet_CONFIRM){
@@ -345,5 +346,5 @@ let nonce;
 let firstMessage = true;
 let latestFinalizedBlockNumber;
 
-if(state === "publisher") mainPublisher(networkName, pegContractAddress).catch((err) => console.log(err));
-else if (state === "subscriber") mainSubscriber(networkName).catch((err) => console.log(err));
+if(state === "publisher") mainPublisher(networkName, pegContractAddress).catch((err) => logger.error(err));
+else if (state === "subscriber") mainSubscriber(networkName).catch((err) => logger.error(err));
