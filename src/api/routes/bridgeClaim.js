@@ -16,9 +16,13 @@ async function routes (fastify) {
       return result
     });
 
-    fastify.get('/transactions/pending', async () => {
-        let pendingWithdrawalsProm = userWithdrawal.find({"withdrawals": {"$elemMatch": {"hasClaimed": false}}}).toArray();
-        let pendingDepositsProm = collectionBridgeClaim.find({$or:[{"status": "EthereumConfirming"}, {"status": "CennznetConfirming"}]}).toArray();
+    fastify.get('/transactions/pending', async (request) => {
+        const getWithdrawals = request.query.withdrawals === "true";
+        const getDeposits = request.query.deposits === "true";
+        let pendingWithdrawalsProm = [];
+        let pendingDepositsProm = [];
+        if(getWithdrawals || (!getWithdrawals && !getDeposits)) pendingWithdrawalsProm = userWithdrawal.find({"withdrawals": {"$elemMatch": {"hasClaimed": false}}}).toArray();
+        if(getDeposits || (!getWithdrawals && !getDeposits)) pendingDepositsProm = collectionBridgeClaim.find({$or:[{"status": "EthereumConfirming"}, {"status": "CennznetConfirming"}]}).toArray();
         let [pendingDeposits, pendingWithdrawals] = await Promise.all([pendingDepositsProm, pendingWithdrawalsProm]);
         //flatten results
         pendingWithdrawals = pendingWithdrawals.map(userWithdrawals => {
