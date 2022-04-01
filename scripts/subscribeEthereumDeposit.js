@@ -195,9 +195,9 @@ async function pushEthConfirmRecords(api, provider, eventConfirmation, redis) {
 
 // Fetch from db all transaction with CENNZnetConfirming status and add them to the queue 'TOPIC_VERIFY_CONFIRM'
 async function pushCennznetConfirmRecords(api, provider, redis) {
-    const recordWithEthConfirm = await BridgeClaim.find({status: 'CENNZnetConfirming'});
+    const recordWithCennznetConfirm = await BridgeClaim.find({status: 'CENNZnetConfirming'});
     await Promise.all(
-        recordWithEthConfirm.map(async (bridgeClaimRecord) => {
+        recordWithCennznetConfirm.map(async (bridgeClaimRecord) => {
             const eventDetails = await ClaimEvents.find({_id: bridgeClaimRecord.txHash});
             if (eventDetails.length > 0) {
                 const pubData = { eventClaimId: bridgeClaimRecord.claimId, blockNumber: eventDetails[0].blockNumber };
@@ -207,23 +207,29 @@ async function pushCennznetConfirmRecords(api, provider, redis) {
     );
 }
 
-async function mainPublisher(networkName, pegContractAddress) {
+async function mainPublisher(networkName, pegContractAddress, providerOverride= false, apiOverride = false, redisOverride = false) {
     networkName = networkName || 'local';
     const connectionStr = process.env.MONGO_URI;
     await mongoose.connect(connectionStr);
-
-    const redis = new Redis();
-
-    let api = await Api.create({network: networkName});
+    let api;
+    let provider;
+    let redis;
+    if(redisOverride) redis = redisOverride;
+    else redis = new Redis();
+    if(apiOverride) api = apiOverride;
+    else api = await Api.create({network: networkName});
     logger.info(`Connect to cennznet network ${networkName}`);
 
-    let provider;
     if (networkName === 'azalea') {
         provider = new ethers.providers.AlchemyProvider(process.env.ETH_NETWORK,
             process.env.AlCHEMY_API_KEY
         );
         api = await Api.create({network: networkName});
-    } else {
+    }
+    else if (networkName === "local"){
+        provider = providerOverride; //for testing
+    }
+    else {
         provider = new ethers.providers.InfuraProvider(process.env.ETH_NETWORK, process.env.INFURA_API_KEY);
         if (networkName === 'nikau') {
             api = await Api.create({provider: 'wss://nikau.centrality.me/public/ws'})
@@ -231,6 +237,7 @@ async function mainPublisher(networkName, pegContractAddress) {
             api = await Api.create({provider: 'wss://rata.centrality.me/public/ws'})
         }
     }
+
     // Keep track of latest finalized block
     await api.rpc.chain
         .subscribeFinalizedHeads(async (head) => {
@@ -348,3 +355,5 @@ let latestFinalizedBlockNumber;
 
 if(state === "publisher") mainPublisher(networkName, pegContractAddress).catch((err) => logger.error(err));
 else if (state === "subscriber") mainSubscriber(networkName).catch((err) => logger.error(err));
+
+module.exports = {mainPublisher, mainSubscriber, TOPIC_VERIFY_CONFIRM, TOPIC_CENNZnet_CONFIRM}
