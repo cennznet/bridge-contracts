@@ -11,8 +11,9 @@ import ERC20Peg from "../../artifacts/contracts/ERC20Peg.sol/ERC20Peg.json";
 import {Api} from "@cennznet/api";
 const Redis = require('ioredis');
 const mongoose = require('mongoose');
+import {BridgeClaim, ClaimEvents } from "../../src/mongo/models"
 
-describe('subscribeEthereumDeposit', () => {
+describe.only('subscribeEthereumDeposit', () => {
   const provider = new MockProvider();
   const [wallet] = provider.getWallets();
   let bridge: Contract;
@@ -24,16 +25,22 @@ describe('subscribeEthereumDeposit', () => {
 
   before(async () => {
     api = await Api.create({network: "local"});
-    redisPub = new Redis();
-    redisSub = new Redis();
-    //TODO start local cennznet node for tests in package.json
+    process.env.REDIS_URL="redis://localhost:6379"
+    process.env.MONGO_URI="mongodb://127.0.0.1:27017/bridgeDbNikau"
+    redisPub = new Redis(process.env.REDIS_URL);
+    redisSub = new Redis(process.env.REDIS_URL);
+    await mongoose.connect(process.env.MONGO_URI);
   });
 
   beforeEach(async () => {
     testToken = await deployContract(wallet, TestToken, [1000000], {});
     bridge = await deployContract(wallet, CENNZnetBridge, []);
     erc20Peg = await deployContract(wallet, ERC20Peg, [bridge.address]);
-    //TODO clear local mongodb and redis
+    //ensure cache and db are clean
+    await redisPub.flushdb();
+    await redisSub.flushdb();
+    await BridgeClaim.deleteMany({});
+    await ClaimEvents.deleteMany({});
   });
 
   after(async () => {
