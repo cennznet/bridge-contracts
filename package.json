@@ -56,7 +56,7 @@
     "winston": "^3.2.1"
   },
   "devDependencies": {
-    "@cennznet/api": "2.1.0-alpha.1",
+    "@cennznet/api": "2.1.0-rc.4",
     "@nomiclabs/hardhat-ethers": "^2.0.2",
     "@nomiclabs/hardhat-etherscan": "^2.1.7",
     "@nomiclabs/hardhat-waffle": "^2.0.1",
