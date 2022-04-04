@@ -7,7 +7,7 @@ const ethers = require('ethers');
 const { curly } = require("node-libcurl");
 const { hexToU8a } = require("@polkadot/util");
 const pegAbi = require("../abi/ERC20Peg.json").abi;
-const Redis = require('ioredis');
+const { Rabbit, BaseQueueHandler } = require('rabbit-queue');
 
 require("dotenv").config();
 
@@ -76,7 +76,7 @@ async function updateClaimInDB(claimId, status) {
     logger.info(`CLAIM Updated the bridge status ${status} for claimId: ${claimId}`);
 }
 
-async function sendClaim(claim, transactionHash, api, nonce, redis, signer) {
+async function sendClaim(claim, transactionHash, api, nonce, rabbit, signer) {
     return new Promise(  (resolve, reject) => {
         api.tx.erc20Peg.depositClaim(transactionHash, claim).signAndSend(signer, { nonce }, async ({status, events}) => {
             if (status.isInBlock) {
@@ -93,7 +93,7 @@ async function sendClaim(claim, transactionHash, api, nonce, redis, signer) {
                         await updateTxStatusInDB( 'CENNZnetConfirming', transactionHash, eventClaimId, claim.beneficiary);
                         await updateClaimEventsBlock({txHash: transactionHash, claimId: eventClaimId, blockNumber});
                         const pubData = { eventClaimId, blockNumber };
-                        await redis.publish(TOPIC_VERIFY_CONFIRM, JSON.stringify(pubData));
+                        await rabbit.publish(TOPIC_VERIFY_CONFIRM, pubData, { correlationId: eventClaimId });
                         resolve(eventClaimId);
                     }
                     else if (section === 'system' && method === 'ExtrinsicFailed') {
@@ -101,8 +101,10 @@ async function sendClaim(claim, transactionHash, api, nonce, redis, signer) {
                         const index = data.toJSON()[0].module.index;
                         const error = data.toJSON()[0].module.error;
                         //AlreadyNotarized error. findMetaError is getting out of index atm: `const errorMsg = api.registry.findMetaError({index, error});`
+                        const errorMsg = api.registry.findMetaError([index, error]);
+                        console.info("errorMsg", errorMsg)
                         if(index === 22 && error === 6) {
-                            //TODO need to find way of getting claimId from ETH tx has
+                            //TODO need to find way of getting claimId from ETH tx hash
                             await updateTxStatusInDB( 'AlreadyNotarized', transactionHash, null, claim.beneficiary);
                             reject(data.toJSON());
                         }
@@ -117,15 +119,15 @@ async function sendClaim(claim, transactionHash, api, nonce, redis, signer) {
 
 // Wait for tx on ethereum till the confirmed blocks and then submits claim on CENNZnet,
 // wait has a timeout of 10 minutes, after which it will update the status 'EthConfirmationTimeout' for a txHash
-async function sendCENNZnetClaimSubscriber(data, redis, api, provider, signer) {
-    const {txHash, confirms, claim} = JSON.parse(data);
+async function sendCENNZnetClaimSubscriber(data, rabbit, api, provider, signer) {
+    const {txHash, confirms, claim} = data;
     const timeout = 600000; // 10 minutes
     try {
         await provider.waitForTransaction(txHash, confirms+1, timeout); // wait for confirm blocks before sending tx on CENNZnet
         // this ensures we're not grabbing nonce in the future but can handle concurrency
         if(!firstMessage) nonce += 1;
         else firstMessage = false;
-        await sendClaim(claim, txHash, api, nonce, redis, signer);
+        await sendClaim(claim, txHash, api, nonce, rabbit, signer);
     } catch (e) {
         logger.error('Error:', e);
         if (e.message == 'timeout exceeded') {
@@ -137,7 +139,8 @@ async function sendCENNZnetClaimSubscriber(data, redis, api, provider, signer) {
 // This is subscribed after the claim is sent on CENNZnet, it knows the blocknumber at which claim was sent
 // and it waits for 5 more finalized blocks and check if the claim was verified in these 5 blocks and updates the db
 async function verifyClaimSubscriber(data, api, signer) {
-    const { eventClaimId, blockNumber } = JSON.parse(data);
+    console.info("verifyClaimSubscriber")
+    const { eventClaimId, blockNumber } = data;
     const blockIntervalSecond = 5;
     const blockNumWait = 5;
     const spendingAssetId = await api.query.genericAsset.spendingAssetId();
@@ -171,7 +174,7 @@ async function verifyClaimSubscriber(data, api, signer) {
 }
 
 // Fetch from db all transaction with EthereumConfirming status and add them to the queue 'TOPIC_VERIFY_CONFIRM' in case missed
-async function pushEthConfirmRecords(api, provider, eventConfirmation, redis) {
+async function pushEthConfirmRecords(api, provider, eventConfirmation, rabbit) {
     const recordWithEthConfirm = await BridgeClaim.find({status: 'EthereumConfirming'});
     await Promise.all(
         recordWithEthConfirm.map(async (bridgeClaimRecord) => {
@@ -187,35 +190,34 @@ async function pushEthConfirmRecords(api, provider, eventConfirmation, redis) {
                     claim,
                 }
                 logger.info(`Previous EthereumConfirming state found for TX ${bridgeClaimRecord.txHash}.`)
-                await redis.publish(TOPIC_CENNZnet_CONFIRM, JSON.stringify(data));
+                await rabbit.publish(TOPIC_CENNZnet_CONFIRM, data, { correlationId: 1 });
+
             }
         })
     );
 }
 
 // Fetch from db all transaction with CENNZnetConfirming status and add them to the queue 'TOPIC_VERIFY_CONFIRM'
-async function pushCennznetConfirmRecords(api, provider, redis) {
+async function pushCennznetConfirmRecords(api, provider, rabbit) {
     const recordWithCennznetConfirm = await BridgeClaim.find({status: 'CENNZnetConfirming'});
     await Promise.all(
         recordWithCennznetConfirm.map(async (bridgeClaimRecord) => {
             const eventDetails = await ClaimEvents.find({_id: bridgeClaimRecord.txHash});
             if (eventDetails.length > 0) {
                 const pubData = { eventClaimId: bridgeClaimRecord.claimId, blockNumber: eventDetails[0].blockNumber };
-                await redis.publish(TOPIC_VERIFY_CONFIRM, JSON.stringify(pubData));
+                await rabbit.publish(TOPIC_VERIFY_CONFIRM, pubData, { correlationId: 1 });
             }
         })
     );
 }
 
-async function mainPublisher(networkName, pegContractAddress, providerOverride= false, apiOverride = false, redisOverride = false) {
+async function mainPublisher(networkName, pegContractAddress, providerOverride= false, apiOverride = false) {
     networkName = networkName || 'local';
     const connectionStr = process.env.MONGO_URI;
     await mongoose.connect(connectionStr);
     let api;
     let provider;
-    let redis;
-    if(redisOverride) redis = redisOverride;
-    else redis = new Redis();
+    const rabbit = new Rabbit( 'amqp://localhost', { scheduledPublish: true });
     if(apiOverride) api = apiOverride;
     else api = await Api.create({network: networkName});
     logger.info(`Connect to cennznet network ${networkName}`);
@@ -250,9 +252,20 @@ async function mainPublisher(networkName, pegContractAddress, providerOverride= 
     const peg = new ethers.Contract(pegContractAddress, pegAbi, provider);
     logger.info(`Connecting to CENNZnet peg contract ${pegContractAddress}...`);
     const eventConfirmation = (await api.query.ethBridge.eventConfirmations()).toNumber();
-    await pushEthConfirmRecords(api, provider, eventConfirmation, redis);
-    await pushCennznetConfirmRecords(api, provider, redis);
-
+    rabbit
+        .createQueue(TOPIC_CENNZnet_CONFIRM, { durable: true }, (msg, ack) => {
+            console.log(msg.content.toString());
+            ack(null, 'response');
+        })
+        .then(() => console.log(`${TOPIC_CENNZnet_CONFIRM} queue created`));
+    rabbit
+        .createQueue(TOPIC_VERIFY_CONFIRM, { durable: true }, (msg, ack) => {
+            console.log(msg.content.toString());
+            ack(null, 'response');
+        })
+        .then(() => console.log(`${TOPIC_VERIFY_CONFIRM} queue created`));
+    // await pushEthConfirmRecords(api, provider, eventConfirmation, rabbit);
+    // await pushCennznetConfirmRecords(api, provider, rabbit);
     // On eth side deposit push pub sub queue with the data, if bridge is paused, update tx status as bridge paused
     peg.on("Deposit", async (sender, tokenAddress, amount, cennznetAddress, eventInfo) => {
         logger.info(`Got the event...${JSON.stringify(eventInfo)}`);
@@ -267,7 +280,7 @@ async function mainPublisher(networkName, pegContractAddress, providerOverride= 
             };
             await updateClaimEventsInDB({txHash: eventInfo.transactionHash, tokenAddress, amount, beneficiary: cennznetAddress});
             const data = { txHash: eventInfo.transactionHash, claim, confirms: eventConfirmation, blockNumber:latestFinalizedBlockNumber }
-            await redis.publish(TOPIC_CENNZnet_CONFIRM, JSON.stringify(data));
+            await rabbit.publish(TOPIC_CENNZnet_CONFIRM, data, { correlationId: '1' });
         } else {
             await updateTxStatusInDB('Bridge Paused', eventInfo.transactionHash, null, cennznetAddress);
         }
@@ -277,8 +290,9 @@ async function mainPublisher(networkName, pegContractAddress, providerOverride= 
 async function mainSubscriber(networkName) {
     const connectionStr = process.env.MONGO_URI;
     await mongoose.connect(connectionStr);
-    const redis = new Redis();
-    const redisPub = new Redis();
+    const rabbit1 = new Rabbit( 'amqp://localhost');
+    const rabbit2 = new Rabbit( 'amqp://localhost');
+
     const api = await Api.create({network: networkName});
     logger.info(`Connected to cennznet network ${networkName}`);
     const keyring = new Keyring({type: 'sr25519'});
@@ -286,26 +300,6 @@ async function mainSubscriber(networkName) {
     const signer = keyring.addFromSeed(seed);
     nonce = (await api.rpc.system.accountNextIndex(signer.address)).toNumber();
     let provider;
-    if (networkName === 'azalea') {
-        provider = new ethers.providers.AlchemyProvider(process.env.ETH_NETWORK,
-            process.env.AlCHEMY_API_KEY
-        );
-    } else {
-        provider = new ethers.providers.InfuraProvider(process.env.ETH_NETWORK, process.env.INFURA_API_KEY);
-    }
-    // Two pub-sub queues -- one for when deposit from ethereum side happens, other when deposit on cennznet happens
-    // subscribe ETH confirm event and send claim on CENNZnet
-    redis.subscribe(TOPIC_VERIFY_CONFIRM, TOPIC_CENNZnet_CONFIRM, (err, count) => {
-        if (err) {
-            // Just like other commands, subscribe() can fail for some reasons, ex network issues.
-            logger.error("Failed to subscribe: %s", err.message);
-        } else {
-            // `count` represents the number of channels this client are currently subscribed to.
-            logger.info(
-                `Subscribed successfully! This client is currently subscribed to ${count} channels.`
-            );
-        }
-    });
 
     // Keep track of latest finalized block
     await api.rpc.chain
@@ -315,21 +309,51 @@ async function mainSubscriber(networkName) {
             logger.info(`At blocknumber: ${blockNumber}`);
             latestFinalizedBlockNumber = blockNumber;
         });
+
     // listen for messages from publisher
-    redis.on("message", (channel, message) => {
-        try {
-            if (channel === TOPIC_CENNZnet_CONFIRM){
-                logger.info(`Received message from ${channel}`);
-                sendCENNZnetClaimSubscriber(message, redisPub, api, provider, signer);
+    class cennznetConfirmHandler extends BaseQueueHandler {
+        handle({ msg, event, correlationId, startTime }) {
+            if (networkName === 'azalea') {
+                provider = new ethers.providers.AlchemyProvider(process.env.ETH_NETWORK,
+                    process.env.AlCHEMY_API_KEY
+                );
+            } else {
+                provider = new ethers.providers.InfuraProvider(process.env.ETH_NETWORK, process.env.INFURA_API_KEY);
             }
-            else if(channel === TOPIC_VERIFY_CONFIRM){
-                logger.info(`Received message from ${channel}`);
-                verifyClaimSubscriber(message, api, signer)
-            }
+            console.log('Received msg: ', msg);
+            console.log('Received: ', event);
+            sendCENNZnetClaimSubscriber(event, rabbit1, api, provider, signer);
         }
-        catch (e) {
-            logger.error('Error:', e);
+
+        afterDlq({ msg, event }) {
+            console.log('added to dlq');
         }
+    }
+    new cennznetConfirmHandler(TOPIC_CENNZnet_CONFIRM, rabbit1, {
+        retries: 3,
+        retryDelay: 5000,
+        logEnabled: true,
+        scope: 'SINGLETON',
+        createAndSubscribeToQueue: true
+    });
+
+    class verifyClaimHandler extends BaseQueueHandler {
+        handle({ msg, event, correlationId, startTime }) {
+            console.log('Received: ', event);
+            console.log('Received msg: ', msg);
+            verifyClaimSubscriber(event, api, signer)
+        }
+
+        afterDlq({ msg, event }) {
+            console.log('added to dlq');
+        }
+    }
+    new verifyClaimHandler(TOPIC_VERIFY_CONFIRM, rabbit2, {
+        retries: 3,
+        retryDelay: 5000,
+        logEnabled: true,
+        scope: 'SINGLETON',
+        createAndSubscribeToQueue: true
     });
 }
 
