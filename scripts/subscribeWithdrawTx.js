@@ -10,7 +10,7 @@ const bridgeAbi = require("../abi/CENNZnetBridge.json").abi;
 const pegAbi = require("../abi/ERC20Peg.json").abi;
 
 let registeredAsset;
-const timeoutMs = 20000;
+const timeoutMs = 60000;
 // Ignore if validator public key is 0x000..
 const IGNORE_KEY = '0x000000000000000000000000000000000000000000000000000000000000000000';
 
@@ -73,6 +73,7 @@ async function getWithdrawProofAndUpdateDB(api, eventDetails, blockHash, bridge)
     try {
         const [eventId, assetId, amountRaw, beneficiary] = eventDetails;
         let amount = api.registry.createType('Balance', amountRaw).toString();
+        logger.info(`IMP WITHDRAW event id :::${eventId}`);
         const eventProof = await withTimeout(api.derive.ethBridge.eventProof(eventId), timeoutMs);
         const newValidators = await extractValidators(api, blockHash);
         logger.info(`IMP WITHDRAW Parameters :::`);
@@ -196,17 +197,18 @@ async function main (networkName, bridgeContractAddress, pegContractAddress) {
         //confirm withdraw on contract
         const hasClaimed = await bridge.eventIds(eventId);
         const withdrawalProof = await WithdrawProof.findOne().elemMatch("withdrawals",{ "proofId": eventId });
-        //get correct proof in array and update
-        withdrawalProof.withdrawals = withdrawalProof.withdrawals.map(withdrawal => {
-            if (withdrawal.proofId === eventId.toString()) {
-                withdrawal.hasClaimed = hasClaimed;
-                return withdrawal;
-            }
-            else{
-                return withdrawal;
-            }
-        });
-        await withdrawalProof.save();
+        if (withdrawalProof) {
+            //get correct proof in array and update
+            withdrawalProof.withdrawals = withdrawalProof.withdrawals.map(withdrawal => {
+                if (withdrawal.proofId === eventId.toString()) {
+                    withdrawal.hasClaimed = hasClaimed;
+                    return withdrawal;
+                } else {
+                    return withdrawal;
+                }
+            });
+            await withdrawalProof.save();
+        }
     });
 }
 
