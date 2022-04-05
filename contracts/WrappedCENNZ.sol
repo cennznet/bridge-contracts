@@ -11,10 +11,10 @@ contract WrappedCENNZ is ERC20, ERC20Pausable, AccessControl {
 
     constructor(address _pegAddress) ERC20("Wrapped CENNZ", "WCENNZ") {
         // Grant the peg address the role to mint
-        _setupRole(MINTER_ROLE, _pegAddress);
+        _grantRole(MINTER_ROLE, _pegAddress);
         // Grant the contract deployer the default admin role: it will be able
         // to grant and revoke any roles
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     /** @dev Upon token transfer, if the address is the minter role we burn the tokens.
