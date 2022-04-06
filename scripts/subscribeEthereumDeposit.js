@@ -102,8 +102,7 @@ async function sendClaim(claim, transactionHash, api, nonce, signer) {
                         const index =  new BigNumber(data.toJSON()[0].module.index);
                         const error = new BigNumber(data.toJSON()[0].module.error);
                         //AlreadyNotarized error. findMetaError is getting out of index atm: `const errorMsg = api.registry.findMetaError({index, error});`
-                        const errorMsg = api.registry.findMetaError({index, error});
-                        console.info("errorMsg", errorMsg)
+                        // const errorMsg = api.registry.findMetaError({index, error});
                         if(index === 22 && error === 6) {
                             //TODO need to find way of getting claimId from ETH tx hash
                             await updateTxStatusInDB( 'AlreadyNotarized', transactionHash, null, claim.beneficiary);
@@ -313,7 +312,7 @@ async function mainSubscriber(networkName) {
     await sendClaimChannel.assertQueue(TOPIC_CENNZnet_CONFIRM);
     const verifyClaimChannel = await rabbit.createChannel();
     await verifyClaimChannel.assertQueue(TOPIC_VERIFY_CONFIRM);
-    const initialDelay = 3000;
+    const initialDelay = 5000;
     const maxRetries = 3;
     sendClaimChannel.consume(TOPIC_CENNZnet_CONFIRM, async (message)=> {
         try{
@@ -321,7 +320,7 @@ async function mainSubscriber(networkName) {
             const data = JSON.parse(message.content.toString());
             const verifyClaimData = await sendCENNZnetClaimSubscriber(data, api, provider, signer);
             sendClaimChannel.ack(message);
-            await rabbit.sendToQueue(TOPIC_VERIFY_CONFIRM, Buffer.from(JSON.stringify(verifyClaimData)));
+            await verifyClaimChannel.sendToQueue(TOPIC_VERIFY_CONFIRM, Buffer.from(JSON.stringify(verifyClaimData)));
         }
         catch (e) {
             const failedCB = () => { console.info("failed all retries")}

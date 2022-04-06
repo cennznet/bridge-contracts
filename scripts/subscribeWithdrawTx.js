@@ -191,6 +191,8 @@ async function main (networkName, bridgeContractAddress, pegContractAddress) {
     //listen to withdraw events on eth to update claimed proofs
     pegContract.on("Withdraw", async (from, to, value, event) => {
         //get the proofId/eventId in transaction hash
+        logger.info(`Got the Withdraw event...${JSON.stringify(event)}`);
+        logger.info('*****************************************************');
         const tx = await wsProvider.getTransaction(event.transactionHash);
         const decodedTx = pegInterface.parseTransaction({ data: tx.data, value: tx.value});
         const eventId = parseInt(decodedTx.args[3].eventId.toString());
