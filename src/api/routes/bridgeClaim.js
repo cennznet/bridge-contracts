@@ -16,6 +16,28 @@ async function routes (fastify) {
       return result
     });
 
+    fastify.get('/transactions/pending', async (request) => {
+        const getWithdrawals = request.query.withdrawals === "true";
+        const getDeposits = request.query.deposits === "true";
+        let pendingWithdrawalsProm = [];
+        let pendingDepositsProm = [];
+        if(getWithdrawals || (!getWithdrawals && !getDeposits)) pendingWithdrawalsProm = userWithdrawal.find({"withdrawals": {"$elemMatch": {"hasClaimed": false}}}).toArray();
+        if(getDeposits || (!getWithdrawals && !getDeposits)) pendingDepositsProm = collectionBridgeClaim.find({$or:[{"status": "EthereumConfirming"}, {"status": "CennznetConfirming"}]}).toArray();
+        let [pendingDeposits, pendingWithdrawals] = await Promise.all([pendingDepositsProm, pendingWithdrawalsProm]);
+        //flatten results
+        pendingWithdrawals = pendingWithdrawals.map(userWithdrawals => {
+            return userWithdrawals.withdrawals.filter(tx => !tx.hasClaimed);
+        }).flat();
+        let pendingBridgeTxs = pendingWithdrawals.concat(pendingDeposits);
+        pendingBridgeTxs = pendingBridgeTxs.map(tx => {
+            if(tx.cennznetAddress) tx.txType = "deposit";
+            else tx.txType = "withdrawal";
+            return tx;
+        })
+        return pendingBridgeTxs;
+    });
+
+
     // Get all withdraw proofs from db, for which either address is CENNZnetAddress
     fastify.get('/withdrawals/:address', async (request) => {
         const eventProofDetails = await userWithdrawal.findOne({
