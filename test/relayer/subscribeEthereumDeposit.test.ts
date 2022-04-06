@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import {mainPublisher, TOPIC_VERIFY_CONFIRM, TOPIC_CENNZnet_CONFIRM} from "../../scripts/subscribeEthereumDeposit";
+import {mainPublisher, TOPIC_VERIFY_CONFIRM, TOPIC_CENNZnet_CONFIRM, CennznetConfirmHandler} from "../../scripts/subscribeEthereumDeposit";
 import {Contract} from "ethers";
 import {deployContract, MockProvider} from "ethereum-waffle";
 // @ts-ignore
@@ -12,25 +12,29 @@ import {Api} from "@cennznet/api";
 const Redis = require('ioredis');
 const mongoose = require('mongoose');
 import {BridgeClaim, ClaimEvents } from "../../src/mongo/models"
+const { Rabbit, BaseQueueHandler } = require('rabbit-queue');
+
 
 //TODO redo tests once rabbitMQ implemented
-describe.skip('subscribeEthereumDeposit', () => {
+describe.only('subscribeEthereumDeposit', () => {
   const provider = new MockProvider();
   const [wallet] = provider.getWallets();
   let bridge: Contract;
   let erc20Peg: Contract;
   let testToken: Contract;
   let api: Api;
-  let redisPub: any;
-  let redisSub: any;
+  let rabbit: any;
+  let rabbit2: any;
 
   before(async () => {
     api = await Api.create({network: "local"});
-    process.env.REDIS_URL="redis://localhost:6379"
-    process.env.MONGO_URI="mongodb://127.0.0.1:27017/bridgeDbNikau"
-    redisPub = new Redis(process.env.REDIS_URL);
-    redisSub = new Redis(process.env.REDIS_URL);
+    process.env.RABBIT_URL="amqp://localhost"
+    process.env.MONGO_URI="mongodb://127.0.0.1:27017/bridgeDbTests"
+    rabbit = new Rabbit(process.env.RABBIT_URL);
+    rabbit2 = new Rabbit(process.env.RABBIT_URL);
     await mongoose.connect(process.env.MONGO_URI);
+
+
   });
 
   beforeEach(async () => {
@@ -38,8 +42,7 @@ describe.skip('subscribeEthereumDeposit', () => {
     bridge = await deployContract(wallet, CENNZnetBridge, []);
     erc20Peg = await deployContract(wallet, ERC20Peg, [bridge.address]);
     //ensure cache and db are clean
-    await redisPub.flushdb();
-    await redisSub.flushdb();
+    // await rabbit.flushdb();
     await BridgeClaim.deleteMany({});
     await ClaimEvents.deleteMany({});
   });
@@ -47,31 +50,37 @@ describe.skip('subscribeEthereumDeposit', () => {
   after(async () => {
     await api.disconnect();
     await mongoose.connection.close();
-    await redisSub.disconnect();
-    await redisPub.disconnect();
+    // await rabbit.disconnect();
+    // await channel.close();
+    // await connection.close();
+
     provider.removeAllListeners();
   })
 
   describe('Deposit Publisher', () => {
     it('Should publish Message into Redis when Deposit occurs', (done ) => {
-      //setup redis to listen for pubs
-      redisSub.subscribe(TOPIC_CENNZnet_CONFIRM, (err, count) => {
-        if (err) {
-          console.error("Failed to subscribe: %s", err.message);
-        } else {
-          console.info(
-              `Subscribed successfully! This client is currently subscribed to ${count} channels.`
-          );
+      //setup rabbit to listen for pubs
+      class CennznetConfirmTestHandler extends BaseQueueHandler {
+        constructor(queueName: any, rabbit: any, options?: {}) {
+          super(queueName,rabbit, options);
         }
+        handle({ msg, event }) {
+          console.log('Received msg TEST: ', msg);
+          console.log('Received TEST: ', event);
+        }
+
+        afterDlq({ event }) {
+          console.log('added to dlq', event);
+        }
+      }
+      new CennznetConfirmTestHandler(TOPIC_VERIFY_CONFIRM, rabbit2, {
+        retries: 3,
+        retryDelay: 5000,
+        logEnabled: true,
+        scope: 'SINGLETON',
       });
-      redisSub.once("message", async (channel, message) => {
-        expect(channel).equal(TOPIC_CENNZnet_CONFIRM);
-        expect(Object.keys(JSON.parse(message)).length).greaterThan(0);
-        redisSub.unsubscribe(TOPIC_CENNZnet_CONFIRM);
-        redisSub.quit();
-        done();
-      });
-      mainPublisher("local", erc20Peg.address, provider, api, redisPub).then(async () => {
+
+      mainPublisher("local", erc20Peg.address, provider, api, rabbit).then(async () => {
         let depositAmount = 7;
         let cennznetAddress = '0xacd6118e217e552ba801f7aa8a934ea6a300a5b394e7c3f42cd9d6dd9a457c10';
         await erc20Peg.activateDeposits();
