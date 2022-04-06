@@ -104,12 +104,13 @@ async function sendClaim(claim, transactionHash, api, nonce, signer) {
                         //AlreadyNotarized error. findMetaError is getting out of index atm: `const errorMsg = api.registry.findMetaError({index, error});`
                         // const errorMsg = api.registry.findMetaError({index, error});
                         if(index === 22 && error === 6) {
-                            //TODO need to find way of getting claimId from ETH tx hash
+                            //TODO need to find way of getting claimId from ETH tx hash to find if already verified
                             await updateTxStatusInDB( 'AlreadyNotarized', transactionHash, null, claim.beneficiary);
-                            reject(data.toJSON());
+                            reject('AlreadyNotarized');
+                            reject(new Error("AlreadyNotarized"));
                         }
                         await updateTxStatusInDB( 'Failed', transactionHash, null, claim.beneficiary);
-                        reject(data.toJSON());
+                        reject(new Error("ExtrinsicFailed"));
                     }
                 }
             }
@@ -140,7 +141,6 @@ async function sendCENNZnetClaimSubscriber(data, api, provider, signer) {
 // This is subscribed after the claim is sent on CENNZnet, it knows the blocknumber at which claim was sent
 // and it waits for 5 more finalized blocks and check if the claim was verified in these 5 blocks and updates the db
 async function verifyClaimSubscriber(data, api, signer) {
-    console.info("verifyClaimSubscriber")
     const { eventClaimId, blockNumber } = data;
     const blockIntervalSecond = 5;
     const blockNumWait = 5;
@@ -171,45 +171,8 @@ async function verifyClaimSubscriber(data, api, signer) {
         }
     } catch (e) {
         logger.error(`Error: ${e}`);
+        throw new Error(e.message);
     }
-}
-
-// Fetch from db all transaction with EthereumConfirming status and add them to the queue 'TOPIC_VERIFY_CONFIRM' in case missed
-async function pushEthConfirmRecords(api, provider, eventConfirmation, rabbit) {
-    const recordWithEthConfirm = await BridgeClaim.find({status: 'EthereumConfirming'});
-    await Promise.all(
-        recordWithEthConfirm.map(async (bridgeClaimRecord) => {
-            const eventDetails = await ClaimEvents.find({_id: bridgeClaimRecord.txHash});
-            if (eventDetails.length > 0) {
-                const claim = {
-                    tokenAddress: eventDetails[0].tokenAddress,
-                    amount: eventDetails[0].amount,
-                    beneficiary: eventDetails[0].beneficiary
-                };
-                const data = {
-                    txHash: bridgeClaimRecord.txHash,
-                    claim,
-                }
-                logger.info(`Previous EthereumConfirming state found for TX ${bridgeClaimRecord.txHash}.`)
-                await rabbit.publish(TOPIC_CENNZnet_CONFIRM, data, { correlationId: 1 });
-
-            }
-        })
-    );
-}
-
-// Fetch from db all transaction with CENNZnetConfirming status and add them to the queue 'TOPIC_VERIFY_CONFIRM'
-async function pushCennznetConfirmRecords(api, provider, rabbit) {
-    const recordWithCennznetConfirm = await BridgeClaim.find({status: 'CENNZnetConfirming'});
-    await Promise.all(
-        recordWithCennznetConfirm.map(async (bridgeClaimRecord) => {
-            const eventDetails = await ClaimEvents.find({_id: bridgeClaimRecord.txHash});
-            if (eventDetails.length > 0) {
-                const pubData = { eventClaimId: bridgeClaimRecord.claimId, blockNumber: eventDetails[0].blockNumber };
-                await rabbit.publish(TOPIC_VERIFY_CONFIRM, pubData, { correlationId: 1 });
-            }
-        })
-    );
 }
 
 async function mainPublisher(networkName, pegContractAddress, providerOverride= false, apiOverride = false, rabbitOverride = false ) {
@@ -257,8 +220,6 @@ async function mainPublisher(networkName, pegContractAddress, providerOverride= 
     const eventConfirmation = (await api.query.ethBridge.eventConfirmations()).toNumber();
     const channel = await rabbit.createChannel();
     await channel.assertQueue(TOPIC_CENNZnet_CONFIRM);
-    // await pushEthConfirmRecords(api, provider, eventConfirmation, rabbit);
-    // await pushCennznetConfirmRecords(api, provider, rabbit);
     // On eth side deposit push pub sub queue with the data, if bridge is paused, update tx status as bridge paused
     peg.on("Deposit", async (sender, tokenAddress, amount, cennznetAddress, eventInfo) => {
         logger.info(`Got the event...${JSON.stringify(eventInfo)}`);
@@ -323,7 +284,9 @@ async function mainSubscriber(networkName) {
             await verifyClaimChannel.sendToQueue(TOPIC_VERIFY_CONFIRM, Buffer.from(JSON.stringify(verifyClaimData)));
         }
         catch (e) {
-            const failedCB = () => { console.info("failed all retries")}
+            //if already sent claim dont try to resend
+            if(e.message === "AlreadyNotarized") return;
+            const failedCB = () => { console.info("failed all TOPIC_VERIFY_CONFIRM retries")}
             await retryMessage(sendClaimChannel, message, initialDelay, maxRetries, failedCB)
         }
     });
@@ -335,7 +298,7 @@ async function mainSubscriber(networkName) {
             verifyClaimChannel.ack(message);
         }
         catch (e) {
-            const failedCB = () => {console.info("failed all retries")}
+            const failedCB = () => {console.info("failed all TOPIC_VERIFY_CONFIRM retries")}
             await retryMessage(verifyClaimChannel, message, initialDelay, maxRetries, failedCB)
         }
     });
