@@ -216,31 +216,35 @@ async function mainPublisher(networkName, pegContractAddress, providerOverride= 
 
     const peg = new ethers.Contract(pegContractAddress, pegAbi, provider);
     logger.info(`Connecting to CENNZnet peg contract ${pegContractAddress}...`);
-    const eventConfirmation = (await api.query.ethBridge.eventConfirmations()).toNumber();
+    const eventConfirmations = (await api.query.ethBridge.eventConfirmations()).toNumber();
     let channel;
     if (channelOverride) channel = channelOverride;
     else channel = await rabbit.createChannel();
     await channel.assertQueue(TOPIC_CENNZnet_CONFIRM);
     // On eth side deposit push pub sub queue with the data, if bridge is paused, update tx status as bridge paused
-    //TODO check all previous deposits to ensure none have been missed
     peg.on("Deposit", async (sender, tokenAddress, amount, cennznetAddress, eventInfo) => {
         logger.info(`Got the event...${JSON.stringify(eventInfo)}`);
         logger.info('*****************************************************');
-        const checkIfBridgePause = await api.query.ethBridge.bridgePaused();
-        if (!checkIfBridgePause.toHuman()) {
-            await updateTxStatusInDB('EthereumConfirming', eventInfo.transactionHash, null, cennznetAddress);
-            const claim = {
-                tokenAddress,
-                amount: amount.toString(),
-                beneficiary: cennznetAddress
-            };
-            await updateClaimEventsInDB({txHash: eventInfo.transactionHash, tokenAddress, amount, beneficiary: cennznetAddress});
-            const data = { txHash: eventInfo.transactionHash, claim, confirms: eventConfirmation, blockNumber:latestFinalizedBlockNumber }
-            await channel.sendToQueue(TOPIC_CENNZnet_CONFIRM, Buffer.from(JSON.stringify(data)));
-        } else {
-            await updateTxStatusInDB('Bridge Paused', eventInfo.transactionHash, null, cennznetAddress);
-        }
+        await handleDepositEvent(api, eventInfo.transactionHash, cennznetAddress, amount, tokenAddress, eventConfirmations, channel );
     });
+}
+
+async function handleDepositEvent(api, transactionHash, cennznetAddress, amount, tokenAddress, eventConfirmations, channel ) {
+    const checkIfBridgePause = await api.query.ethBridge.bridgePaused();
+    if (!checkIfBridgePause.toHuman()) {
+        await updateTxStatusInDB('EthereumConfirming', transactionHash, null, cennznetAddress);
+        const claim = {
+            tokenAddress,
+            amount: amount.toString(),
+            beneficiary: cennznetAddress
+        };
+        await updateClaimEventsInDB({txHash: transactionHash, tokenAddress, amount, beneficiary: cennznetAddress});
+        const data = { txHash: transactionHash, claim, confirms: eventConfirmations, blockNumber:latestFinalizedBlockNumber }
+        await channel.sendToQueue(TOPIC_CENNZnet_CONFIRM, Buffer.from(JSON.stringify(data)));
+    logger.info(`Deposit Event handled for TxHash...${transactionHash}`);
+    } else {
+        await updateTxStatusInDB('Bridge Paused', transactionHash, null, cennznetAddress);
+    }
 }
 
 async function mainSubscriber(networkName) {
@@ -345,7 +349,7 @@ const queueNetwork = process.env.MSG_QUEUE_NETWORK;
 const networkName = process.env.NETWORK;
 const pegContractAddress = process.env.PEG_CONTRACT;
 const stateIdx = process.argv.slice(2).findIndex(item => item === "--state");
-const state = process.argv.slice(2)[stateIdx + 1]
+const state = process.argv.slice(2)[stateIdx + 1];
 const airDropAmount = 50000;
 const TOPIC_CENNZnet_CONFIRM = `STATE_CENNZ_CONFIRM_${queueNetwork}`;
 const TOPIC_VERIFY_CONFIRM = `STATE_VERIFY_CONFIRM_${queueNetwork}`;
@@ -356,4 +360,4 @@ let latestFinalizedBlockNumber;
 if(state === "publisher") mainPublisher(networkName, pegContractAddress).catch((err) => logger.error(err));
 else if (state === "subscriber") mainSubscriber(networkName).catch((err) => logger.error(err));
 
-module.exports = {mainPublisher, mainSubscriber, TOPIC_VERIFY_CONFIRM, TOPIC_CENNZnet_CONFIRM}
+module.exports = {wait, handleDepositEvent, mainPublisher, mainSubscriber, TOPIC_VERIFY_CONFIRM, TOPIC_CENNZnet_CONFIRM}

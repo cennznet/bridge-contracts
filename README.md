@@ -70,13 +70,13 @@ yarn eth_e2e
 
 ### Local Relayer Service
 To start a relayer service locally you need:
-- To run local redis. installation steps [here](https://redis.io/docs/getting-started/)
+- To run local rabbitMQ. installation steps [here](https://www.rabbitmq.com/download.html)
 - To run local mongodb. installation steps [here](https://zellwk.com/blog/install-mongodb/)
 - Ensure you have env vars set:
   
   `MSG_QUEUE_NETWORK=local`
   
-  `REDIS_URL=redis://localhost:6379`
+  `RABBIT_URL=amqp://localhost:5672`
   
   `MONGO_URI=mongodb://127.0.0.1:27017/bridgeDbNikau`
 
@@ -100,6 +100,9 @@ docker run -e MONGO_URI="mongo+srv://<username>:<password>/bridgeDb" \
            -e SLACK_SECRET="......" \
            -e ETH_ACCOUNT_KEY="0x..." \
            cennznet/bridge-relayer yarn run claimRelayer ropsten|kovan|mainnet --state publisher|subscriber
+           
+# Eth Event poller
+yarn run ethEventPoller --interval 10
 
 # validator set relayer
 docker run \
