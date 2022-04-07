@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import {mainPublisher, TOPIC_VERIFY_CONFIRM, TOPIC_CENNZnet_CONFIRM, CennznetConfirmHandler} from "../../scripts/subscribeEthereumDeposit";
+import {mainPublisher, TOPIC_VERIFY_CONFIRM, TOPIC_CENNZnet_CONFIRM} from "../../scripts/subscribeEthereumDeposit";
 import {Contract} from "ethers";
 import {deployContract, MockProvider} from "ethereum-waffle";
 // @ts-ignore
@@ -9,14 +9,11 @@ import CENNZnetBridge from "../../artifacts/contracts/CENNZnetBridge.sol/CENNZne
 // @ts-ignore
 import ERC20Peg from "../../artifacts/contracts/ERC20Peg.sol/ERC20Peg.json";
 import {Api} from "@cennznet/api";
-const Redis = require('ioredis');
 const mongoose = require('mongoose');
 import {BridgeClaim, ClaimEvents } from "../../src/mongo/models"
-const { Rabbit, BaseQueueHandler } = require('rabbit-queue');
+const amqp = require("amqplib");
 
-
-//TODO redo tests once rabbitMQ implemented
-describe.only('subscribeEthereumDeposit', () => {
+describe('subscribeEthereumDeposit', () => {
   const provider = new MockProvider();
   const [wallet] = provider.getWallets();
   let bridge: Contract;
@@ -24,17 +21,14 @@ describe.only('subscribeEthereumDeposit', () => {
   let testToken: Contract;
   let api: Api;
   let rabbit: any;
-  let rabbit2: any;
+  let sendClaimChannel: any;
 
   before(async () => {
     api = await Api.create({network: "local"});
     process.env.RABBIT_URL="amqp://localhost"
     process.env.MONGO_URI="mongodb://127.0.0.1:27017/bridgeDbTests"
-    rabbit = new Rabbit(process.env.RABBIT_URL);
-    rabbit2 = new Rabbit(process.env.RABBIT_URL);
+    rabbit = await amqp.connect(process.env.RABBIT_URL);
     await mongoose.connect(process.env.MONGO_URI);
-
-
   });
 
   beforeEach(async () => {
@@ -42,47 +36,33 @@ describe.only('subscribeEthereumDeposit', () => {
     bridge = await deployContract(wallet, CENNZnetBridge, []);
     erc20Peg = await deployContract(wallet, ERC20Peg, [bridge.address]);
     //ensure cache and db are clean
-    // await rabbit.flushdb();
     await BridgeClaim.deleteMany({});
     await ClaimEvents.deleteMany({});
+    sendClaimChannel = await rabbit.createChannel();
+    sendClaimChannel.deleteQueue(TOPIC_CENNZnet_CONFIRM);
+    await sendClaimChannel.assertQueue(TOPIC_CENNZnet_CONFIRM);
   });
 
   after(async () => {
     await api.disconnect();
     await mongoose.connection.close();
-    // await rabbit.disconnect();
-    // await channel.close();
-    // await connection.close();
-
+    await sendClaimChannel.close();
+    await rabbit.close();
     provider.removeAllListeners();
   })
 
   describe('Deposit Publisher', () => {
     it('Should publish Message into Redis when Deposit occurs', (done ) => {
+      let depositAmount = 7;
+      let cennznetAddress = '0xacd6118e217e552ba801f7aa8a934ea6a300a5b394e7c3f42cd9d6dd9a457c10';
       //setup rabbit to listen for pubs
-      class CennznetConfirmTestHandler extends BaseQueueHandler {
-        constructor(queueName: any, rabbit: any, options?: {}) {
-          super(queueName,rabbit, options);
-        }
-        handle({ msg, event }) {
-          console.log('Received msg TEST: ', msg);
-          console.log('Received TEST: ', event);
-        }
-
-        afterDlq({ event }) {
-          console.log('added to dlq', event);
-        }
-      }
-      new CennznetConfirmTestHandler(TOPIC_VERIFY_CONFIRM, rabbit2, {
-        retries: 3,
-        retryDelay: 5000,
-        logEnabled: true,
-        scope: 'SINGLETON',
+      sendClaimChannel.consume(TOPIC_CENNZnet_CONFIRM, async (message)=> {
+        const data = JSON.parse(message.content.toString());
+        expect(parseInt(data.claim.amount)).equal(depositAmount);
+        expect(data.claim.beneficiary).equal(cennznetAddress);
+        done()
       });
-
-      mainPublisher("local", erc20Peg.address, provider, api, rabbit).then(async () => {
-        let depositAmount = 7;
-        let cennznetAddress = '0xacd6118e217e552ba801f7aa8a934ea6a300a5b394e7c3f42cd9d6dd9a457c10';
+      mainPublisher("local", erc20Peg.address, provider, api, rabbit, sendClaimChannel).then(async () => {
         await erc20Peg.activateDeposits();
         await testToken.approve(erc20Peg.address, depositAmount);
         await erc20Peg.deposit(testToken.address, depositAmount, cennznetAddress);

@@ -54,10 +54,6 @@ jobs:
       uses: actions/setup-node@v1
       with:
         node-version: ${{ matrix.node-version }}
-    - name: Install redis
-      run: sudo apt-get install -y redis-tools redis-server
-    - name: Verify that redis is up
-      run: redis-cli ping
     - name: Config yarn cache
       id: yarn-cache-dir-path
       run: echo "::set-output name=dir::$(yarn cache dir)"
@@ -68,13 +64,21 @@ jobs:
         key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
         restore-keys: |
           ${{ runner.os }}-yarn-
+    - uses: getong/rabbitmq-action@v1.2
+      with:
+        rabbitmq version: '3.8.2-management-alpine'
+        host port: 5672
+        rabbitmq user: 'user'
+        rabbitmq password: 'noBahC3e'
+        rabbitmq vhost: 'vhost_name'
     - name: test
       env:
         ETH_ACCOUNT_KEY: ${{ secrets.ETH_ACCOUNT_KEY }}
         ROPSTEN_INFURA_API_KEY: ${{ secrets.ROPSTEN_INFURA_API_KEY }}
+        MSG_QUEUE_NETWORK: 'local'
       run: |
         yarn install --frozen-lockfile
-        yarn test
+        yarn run test:withLocalNode
 
   build_code:
     name: Build Code
@@ -90,7 +94,7 @@ jobs:
         node-version: ${{ matrix.node-version }}
     - name: Config yarn cache
       id: yarn-cache-dir-path
-      run: echo "::set-output name=dir::$(yarn cache dir)"
+      run: echo '::set-output name=dir::$(yarn cache dir)"
     - uses: actions/cache@v1
       id: yarn-cache
       with:

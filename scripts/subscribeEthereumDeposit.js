@@ -1,4 +1,3 @@
-
 const { Api } = require('@cennznet/api');
 const { Keyring } = require('@polkadot/keyring');
 const logger = require('./logger');
@@ -175,7 +174,7 @@ async function verifyClaimSubscriber(data, api, signer) {
     }
 }
 
-async function mainPublisher(networkName, pegContractAddress, providerOverride= false, apiOverride = false, rabbitOverride = false ) {
+async function mainPublisher(networkName, pegContractAddress, providerOverride= false, apiOverride = false, rabbitOverride = false, channelOverride = false ) {
     networkName = networkName || 'local';
     const connectionStr = process.env.MONGO_URI;
     await mongoose.connect(connectionStr);
@@ -218,9 +217,12 @@ async function mainPublisher(networkName, pegContractAddress, providerOverride= 
     const peg = new ethers.Contract(pegContractAddress, pegAbi, provider);
     logger.info(`Connecting to CENNZnet peg contract ${pegContractAddress}...`);
     const eventConfirmation = (await api.query.ethBridge.eventConfirmations()).toNumber();
-    const channel = await rabbit.createChannel();
+    let channel;
+    if (channelOverride) channel = channelOverride;
+    else channel = await rabbit.createChannel();
     await channel.assertQueue(TOPIC_CENNZnet_CONFIRM);
     // On eth side deposit push pub sub queue with the data, if bridge is paused, update tx status as bridge paused
+    //TODO check all previous deposits to ensure none have been missed
     peg.on("Deposit", async (sender, tokenAddress, amount, cennznetAddress, eventInfo) => {
         logger.info(`Got the event...${JSON.stringify(eventInfo)}`);
         logger.info('*****************************************************');
@@ -286,6 +288,7 @@ async function mainSubscriber(networkName) {
         catch (e) {
             //if already sent claim dont try to resend
             if(e.message === "AlreadyNotarized") return;
+            //TODO Alert slack if all retries fail
             const failedCB = () => { console.info("failed all TOPIC_VERIFY_CONFIRM retries")}
             await retryMessage(sendClaimChannel, message, initialDelay, maxRetries, failedCB)
         }
@@ -298,6 +301,7 @@ async function mainSubscriber(networkName) {
             verifyClaimChannel.ack(message);
         }
         catch (e) {
+            //TODO Alert slack if all retries fail
             const failedCB = () => {console.info("failed all TOPIC_VERIFY_CONFIRM retries")}
             await retryMessage(verifyClaimChannel, message, initialDelay, maxRetries, failedCB)
         }
