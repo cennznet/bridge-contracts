@@ -177,7 +177,8 @@ async function verifyClaimSubscriber(data, api, signer) {
 async function mainPublisher(networkName, pegContractAddress, providerOverride= false, apiOverride = false, rabbitOverride = false, channelOverride = false ) {
     networkName = networkName || 'local';
     const connectionStr = process.env.MONGO_URI;
-    await mongoose.connect(connectionStr);
+    //check if db connection already connected for testing
+    if(mongoose.connection.readyState !== 1) await mongoose.connect(connectionStr);
     let api;
     let provider;
     let rabbit;

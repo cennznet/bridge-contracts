@@ -9,11 +9,11 @@ const { Api } = require('@cennznet/api');
 
 require("dotenv").config();
 
-async function pollDepositEvents( networkName, interval ) {
+async function pollDepositEvents( networkName, interval, pegContractAddress, providerOverride = false ) {
     let provider;
     let api;
     const connectionStr = process.env.MONGO_URI;
-    await mongoose.connect(connectionStr);
+    if(mongoose.connection.readyState !== 1) await mongoose.connect(connectionStr);
     api = await Api.create({network: networkName});
     let rabbit = await amqp.connect(process.env.RABBIT_URL);
     let channel = await rabbit.createChannel();
@@ -26,6 +26,9 @@ async function pollDepositEvents( networkName, interval ) {
             );
             api = await Api.create({network: networkName});
         }
+        else if (networkName === "local"){
+            api = await Api.create({network: "local"});
+        }
         else {
             provider = new ethers.providers.InfuraProvider(process.env.ETH_NETWORK, process.env.INFURA_API_KEY);
             if (networkName === 'nikau') {
@@ -34,6 +37,7 @@ async function pollDepositEvents( networkName, interval ) {
                 api = await Api.create({provider: 'wss://rata.centrality.me/public/ws'})
             }
         }
+        if(providerOverride) provider = providerOverride
         //Get all bridge claims and deposit events on
         const peg = new ethers.Contract(pegContractAddress, pegAbi, provider);
         const allEvents = await peg.queryFilter({});
@@ -62,4 +66,6 @@ const pegContractAddress = process.env.PEG_CONTRACT;
 const stateIdx = process.argv.slice(2).findIndex(item => item === "--interval");
 const interval = process.argv.slice(2)[stateIdx + 1];
 
-pollDepositEvents(networkName, interval).catch((err) => logger.error(err));
+pollDepositEvents(networkName, interval, pegContractAddress).catch((err) => logger.error(err));
+
+module.exports = {pollDepositEvents}
