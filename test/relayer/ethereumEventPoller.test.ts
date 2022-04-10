@@ -12,6 +12,11 @@ import {Api} from "@cennznet/api";
 const mongoose = require('mongoose');
 import {BridgeClaim } from "../../src/mongo/models"
 const amqp = require("amqplib");
+
+//always ensure we're testing on localhost
+process.env.RABBIT_URL="amqp://localhost"
+process.env.MONGO_URI="mongodb://127.0.0.1:27017/bridgeDbTests"
+
 import {pollDepositEvents} from "../../scripts/ethereumEventPoller";
 
 describe('ethereumEventPoller', () => {
@@ -26,9 +31,10 @@ describe('ethereumEventPoller', () => {
 
   before(async () => {
     api = await Api.create({network: "local"});
-    process.env.RABBIT_URL="amqp://localhost"
-    process.env.MONGO_URI="mongodb://127.0.0.1:27017/bridgeDbTests"
     rabbit = await amqp.connect(process.env.RABBIT_URL);
+    await mongoose.connect(process.env.MONGO_URI);
+    //ensure cache and db are clean
+    await BridgeClaim.deleteMany({});
   });
 
   beforeEach(async () => {
@@ -43,6 +49,7 @@ describe('ethereumEventPoller', () => {
   });
 
   after(async () => {
+    await BridgeClaim.deleteMany({});
     await api.disconnect();
     await mongoose.connection.close();
     await sendClaimChannel.close();
@@ -51,7 +58,7 @@ describe('ethereumEventPoller', () => {
   })
 
   describe('Deposit Poller', () => {
-    it('Should publish Message into RabbitMQ when Deposit Event Missed', ( done ) => {
+    it('Should publish Message into RabbitMQ and DB when Deposit Event Missed', ( done ) => {
       //trigger deposit and ensure event get published
       let depositAmount = 7;
       let cennznetAddress = '0xacd6118e217e552ba801f7aa8a934ea6a300a5b394e7c3f42cd9d6dd9a457c10';
@@ -71,9 +78,13 @@ describe('ethereumEventPoller', () => {
         const data = JSON.parse(message.content.toString());
         expect(parseInt(data.claim.amount)).equal(depositAmount);
         expect(data.claim.beneficiary).equal(cennznetAddress);
+        //check if published to DB
+        const foundClaim = await BridgeClaim.find({txHash:data.txHash});
+        expect(!!foundClaim).equal(true);
         done()
-      })
-      depositEventAndSubmit.then(_ => {pollDepositEvents("local", 10, erc20Peg.address, provider)})
+      });
+      //emit deposit event then ensure it is recorded
+      depositEventAndSubmit.then(_ => {pollDepositEvents("local", 10, erc20Peg.address, provider)});
     });
   })
 })

@@ -1,5 +1,4 @@
 import { expect } from 'chai';
-import {mainPublisher, TOPIC_VERIFY_CONFIRM, TOPIC_CENNZnet_CONFIRM} from "../../scripts/subscribeEthereumDeposit";
 import {Contract} from "ethers";
 import {deployContract, MockProvider} from "ethereum-waffle";
 // @ts-ignore
@@ -13,6 +12,11 @@ const mongoose = require('mongoose');
 import {BridgeClaim, ClaimEvents } from "../../src/mongo/models"
 const amqp = require("amqplib");
 
+//always ensure we're testing on localhost
+process.env.RABBIT_URL="amqp://localhost"
+process.env.MONGO_URI="mongodb://127.0.0.1:27017/bridgeDbTests"
+import {mainPublisher, TOPIC_VERIFY_CONFIRM, TOPIC_CENNZnet_CONFIRM} from "../../scripts/subscribeEthereumDeposit";
+
 describe('subscribeEthereumDeposit', () => {
   const provider = new MockProvider();
   const [wallet] = provider.getWallets();
@@ -25,8 +29,6 @@ describe('subscribeEthereumDeposit', () => {
 
   before(async () => {
     api = await Api.create({network: "local"});
-    process.env.RABBIT_URL="amqp://localhost"
-    process.env.MONGO_URI="mongodb://127.0.0.1:27017/bridgeDbTests"
     rabbit = await amqp.connect(process.env.RABBIT_URL);
     await mongoose.connect(process.env.MONGO_URI);
   });
@@ -44,6 +46,8 @@ describe('subscribeEthereumDeposit', () => {
   });
 
   after(async () => {
+    await BridgeClaim.deleteMany({});
+    await ClaimEvents.deleteMany({});
     await api.disconnect();
     await mongoose.connection.close();
     await sendClaimChannel.close();

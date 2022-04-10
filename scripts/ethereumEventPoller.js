@@ -46,7 +46,7 @@ async function pollDepositEvents( networkName, interval, pegContractAddress, pro
         const allDepositClaims = await BridgeClaim.find({});
         const allDepositClaimsTxHashes = allDepositClaims.map(claim => claim.txHash);
         const missedDepositEventHashes = depositEventTxHashes.filter(txhash => !allDepositClaimsTxHashes.includes(txhash))
-        logger.info("Current Missed Deposit Events Number: ", missedDepositEventHashes.length);
+        logger.info("Current Missed Deposit Events Number: ", missedDepositEventHashes.length.toString());
         //get the event for each and submit
         const eventConfirmations = (await api.query.ethBridge.eventConfirmations()).toNumber();
         const missedEventProms = missedDepositEventHashes.map(async txHash => {
@@ -66,6 +66,6 @@ const pegContractAddress = process.env.PEG_CONTRACT;
 const stateIdx = process.argv.slice(2).findIndex(item => item === "--interval");
 const interval = process.argv.slice(2)[stateIdx + 1];
 
-pollDepositEvents(networkName, interval, pegContractAddress).catch((err) => logger.error(err));
+if(stateIdx !== -1) pollDepositEvents(networkName, interval, pegContractAddress).catch((err) => logger.error(err));
 
 module.exports = {pollDepositEvents}
