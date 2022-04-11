@@ -101,8 +101,8 @@ async function sendClaim(claim, transactionHash, api, nonce, signer) {
                         const index =  new BigNumber(data.toJSON()[0].module.index);
                         const error = new BigNumber(data.toJSON()[0].module.error);
                         //AlreadyNotarized error. findMetaError is getting out of index atm: `const errorMsg = api.registry.findMetaError({index, error});`
-                        // const errorMsg = api.registry.findMetaError({index, error});
-                        if(index === 22 && error === 6) {
+                        // const errorMsg = api.registry.findMetaError(new Uint8Array([index.toNumber(), error.toNumber()]),);
+                        if(index.toNumber() === 22 && error.toNumber() === 6) {
                             //TODO need to find way of getting claimId from ETH tx hash to find if already verified
                             await updateTxStatusInDB( 'AlreadyNotarized', transactionHash, null, claim.beneficiary);
                             reject('AlreadyNotarized');
@@ -123,7 +123,14 @@ async function sendCENNZnetClaimSubscriber(data, api, provider, signer) {
     const {txHash, confirms, claim} = data;
     const timeout = 600000; // 10 minutes
     try {
-        await provider.waitForTransaction(txHash, confirms+1, timeout); // wait for confirm blocks before sending tx on CENNZnet
+        //known bug with waitForTransaction on local network
+        if(provider.network.chainId === 1337){
+            const tx = await provider.getTransaction(txHash);
+            await tx.wait(); // wait for confirm blocks before sending tx on CENNZnet
+        }
+        else{
+            await provider.waitForTransaction(txHash, confirms+1, timeout); // wait for confirm blocks before sending tx on CENNZnet
+        }
         // this ensures we're not grabbing nonce in the future but can handle concurrency
         if(!firstMessage) nonce += 1;
         else firstMessage = false;
@@ -145,6 +152,7 @@ async function verifyClaimSubscriber(data, api, signer) {
     const blockNumWait = 5;
     const spendingAssetId = await api.query.genericAsset.spendingAssetId();
     await wait(blockNumWait * blockIntervalSecond);
+
     try {
         //loop through next 5 blocks to see if the claim is verified
         for (let i = blockNumber; i < blockNumber+blockNumWait; i++) {
@@ -248,23 +256,36 @@ async function handleDepositEvent(api, transactionHash, cennznetAddress, amount,
     }
 }
 
-async function mainSubscriber(networkName) {
+async function mainSubscriber(networkName, providerOverride= false, apiOverride = false, rabbitOverride = false, sendClaimChannel = false, verifyClaimChannel= false) {
     const connectionStr = process.env.MONGO_URI;
-    await mongoose.connect(connectionStr);
-    const rabbit = await amqp.connect(process.env.RABBIT_URL);
-
-    const api = await Api.create({network: networkName});
+    if(mongoose.connection.readyState !== 1) await mongoose.connect(connectionStr);
+    let api;
+    let provider;
+    let rabbit;
+    if(rabbit) rabbit = rabbitOverride;
+    else rabbit = await amqp.connect(process.env.RABBIT_URL);
+    if(apiOverride) api = apiOverride;
+    else api = await Api.create({network: networkName});
     logger.info(`Connected to cennznet network ${networkName}`);
     const keyring = new Keyring({type: 'sr25519'});
-    const seed = hexToU8a(process.env.CENNZNET_SECRET);
-    const signer = keyring.addFromSeed(seed);
+    let signer;
+    if(networkName !== "local"){
+        const seed = hexToU8a(process.env.CENNZNET_SECRET);
+        signer = keyring.addFromSeed(seed);
+    }
+    else{
+        signer = keyring.addFromUri('//Alice');
+    }
     nonce = (await api.rpc.system.accountNextIndex(signer.address)).toNumber();
-    let provider;
     if (networkName === 'azalea') {
         provider = new ethers.providers.AlchemyProvider(process.env.ETH_NETWORK,
             process.env.AlCHEMY_API_KEY
         );
-    } else {
+    }
+    else if (networkName === "local"){
+        provider = providerOverride; //for testing
+    }
+    else {
         provider = new ethers.providers.InfuraProvider(process.env.ETH_NETWORK, process.env.INFURA_API_KEY);
     }
     // Keep track of latest finalized block
@@ -276,10 +297,14 @@ async function mainSubscriber(networkName) {
             latestFinalizedBlockNumber = blockNumber;
         });
     //Setup rabbitMQ
-    const sendClaimChannel = await rabbit.createChannel();
-    await sendClaimChannel.assertQueue(TOPIC_CENNZnet_CONFIRM);
-    const verifyClaimChannel = await rabbit.createChannel();
-    await verifyClaimChannel.assertQueue(TOPIC_VERIFY_CONFIRM);
+    if (!sendClaimChannel){
+        sendClaimChannel = await rabbit.createChannel();
+        await sendClaimChannel.assertQueue(TOPIC_CENNZnet_CONFIRM);
+    }
+    if (!verifyClaimChannel){
+        verifyClaimChannel = await rabbit.createChannel();
+        await verifyClaimChannel.assertQueue(TOPIC_VERIFY_CONFIRM);
+    }
     const initialDelay = 5000;
     const maxRetries = 3;
     sendClaimChannel.consume(TOPIC_CENNZnet_CONFIRM, async (message)=> {
