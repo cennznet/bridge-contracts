@@ -24,7 +24,7 @@
     "withdrawListener": "node scripts/subscribeWithdrawTx.js",
     "ethEventPoller": "node scripts/ethereumEventPoller.js",
     "test": "yarn build && env TS_NODE_PROJECT='./tsconfig.commonjs.json' mocha -r ts-node/register 'test/**/*.test.ts' --timeout 30000 --exit",
-    "test:withLocalNode": "concurrently --kill-others --success \"last\" \"yarn start:node\" \"wait-on tcp:9933 && yarn build && env TS_NODE_PROJECT='./tsconfig.commonjs.json' mocha -r ts-node/register 'test/**/*.test.ts' --timeout 30000 --exit\"",
+    "test:withLocalNode": "concurrently --kill-others --success \"first\" \"yarn start:node\" \"wait-on tcp:9933 && yarn build && env TS_NODE_PROJECT='./tsconfig.commonjs.json' mocha -r ts-node/register 'test/**/*.test.ts' --timeout 30000 --exit\"",
     "start:node": "docker run -p 9933:9933 -p 9944:9944 cennznet/cennznet:2.1.0 --dev --unsafe-ws-external --unsafe-rpc-external"
   },
   "resolutions": {
