@@ -48,6 +48,7 @@ jobs:
     strategy:
       matrix:
         node-version: [16.x]
+        mongodb-version: [ '5.0' ]
     steps:
     - uses: actions/checkout@v1
     - name: Use Node.js ${{ matrix.node-version }}
@@ -68,9 +69,13 @@ jobs:
       with:
         rabbitmq version: '3.8.2-management-alpine'
         host port: 5672
-        rabbitmq user: 'user'
-        rabbitmq password: 'noBahC3e'
+        rabbitmq user: 'guest'
+        rabbitmq password: 'guest'
         rabbitmq vhost: 'vhost_name'
+    - name: Start MongoDB
+      uses: supercharge/mongodb-github-action@1.7.0
+      with:
+        mongodb-version: ${{ matrix.mongodb-version }}
     - name: test
       env:
         ETH_ACCOUNT_KEY: ${{ secrets.ETH_ACCOUNT_KEY }}
