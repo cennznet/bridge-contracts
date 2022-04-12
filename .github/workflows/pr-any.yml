@@ -69,9 +69,6 @@ jobs:
       with:
         rabbitmq version: '3.8.2-management-alpine'
         host port: 5672
-        rabbitmq user: 'guest'
-        rabbitmq password: 'guest'
-        rabbitmq vhost: 'vhost_name'
     - name: Start MongoDB
       uses: supercharge/mongodb-github-action@1.7.0
       with:
