@@ -65,10 +65,14 @@ jobs:
         key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
         restore-keys: |
           ${{ runner.os }}-yarn-
-    - uses: getong/rabbitmq-action@v1.2
+    - name: Start RabbitMQ
+      uses: getong/rabbitmq-action@v1.2
       with:
         rabbitmq version: '3.8.2-management-alpine'
         host port: 5672
+        rabbitmq user: 'guest'
+        rabbitmq password: 'guest'
+        rabbitmq vhost: 'vhost_name'
     - name: Start MongoDB
       uses: supercharge/mongodb-github-action@1.7.0
       with:
@@ -78,6 +82,7 @@ jobs:
         ETH_ACCOUNT_KEY: ${{ secrets.ETH_ACCOUNT_KEY }}
         ROPSTEN_INFURA_API_KEY: ${{ secrets.ROPSTEN_INFURA_API_KEY }}
         MSG_QUEUE_NETWORK: 'local'
+        CI: 'true'
       run: |
         yarn install --frozen-lockfile
         yarn run test:withLocalNode

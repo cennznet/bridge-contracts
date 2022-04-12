@@ -13,9 +13,6 @@ const mongoose = require('mongoose');
 import {BridgeClaim } from "../../src/mongo/models"
 const amqp = require("amqplib");
 
-//always ensure we're testing on localhost
-process.env.RABBIT_URL="amqp://localhost"
-process.env.MONGO_URI="mongodb://127.0.0.1:27017/bridgeDbTests"
 
 import {pollDepositEvents} from "../../scripts/ethereumEventPoller";
 
@@ -30,6 +27,10 @@ describe('ethereumEventPoller', () => {
   let sendClaimChannel: any;
 
   before(async () => {
+    //always ensure we're testing on localhost
+    if(process.env.CI === "true") process.env.RABBIT_URL="amqp://guest:guest@127.0.0.1/vhost_name";
+    else process.env.RABBIT_URL="amqp://localhost";
+    process.env.MONGO_URI="mongodb://127.0.0.1:27017/bridgeDbTests"
     api = await Api.create({network: "local"});
     rabbit = await amqp.connect(process.env.RABBIT_URL);
     await mongoose.connect(process.env.MONGO_URI);

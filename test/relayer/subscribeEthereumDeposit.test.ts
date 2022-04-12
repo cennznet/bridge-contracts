@@ -12,9 +12,6 @@ const mongoose = require('mongoose');
 import {BridgeClaim, ClaimEvents } from "../../src/mongo/models"
 const amqp = require("amqplib");
 
-//always ensure we're testing on localhost
-process.env.RABBIT_URL="amqp://localhost"
-process.env.MONGO_URI="mongodb://127.0.0.1:27017/bridgeDbTests"
 import {mainPublisher, mainSubscriber, TOPIC_VERIFY_CONFIRM, TOPIC_CENNZnet_CONFIRM, wait} from "../../scripts/subscribeEthereumDeposit";
 const { Keyring } = require('@polkadot/keyring');
 
@@ -28,6 +25,13 @@ describe('subscribeEthereumDeposit', () => {
   let rabbit: any;
   let sendClaimChannel: any;
   let verifyClaimChannel: any;
+
+  before(async () => {
+    //always ensure we're testing on localhost
+    if(process.env.CI === "true") process.env.RABBIT_URL="amqp://guest:guest@127.0.0.1/vhost_name"
+    else process.env.RABBIT_URL="amqp://localhost"
+    process.env.MONGO_URI="mongodb://127.0.0.1:27017/bridgeDbTests"
+  })
 
   beforeEach(async () => {
     api = await Api.create({network: "local"});
