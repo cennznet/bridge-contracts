@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { TOPIC_CENNZnet_CONFIRM} from "../../scripts/subscribeEthereumDeposit";
+import { TOPIC_CENNZnet_CONFIRM, wait} from "../../scripts/subscribeEthereumDeposit";
 import {Contract} from "ethers";
 import {deployContract, MockProvider} from "ethereum-waffle";
 // @ts-ignore
@@ -55,6 +55,8 @@ describe('ethereumEventPoller', () => {
     await sendClaimChannel.close();
     await rabbit.close();
     provider.removeAllListeners();
+    //wait short time for poller to disconnect
+    await wait(2);
   })
 
   describe('Deposit Poller', () => {

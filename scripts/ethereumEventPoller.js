@@ -21,7 +21,10 @@ async function pollDepositEvents( networkName, interval, pegContractAddress, pro
     const shouldPoll = true;
     while (shouldPoll){
         //stop poller if DB disconnects
-        if(mongoose.connection.readyState === 0) logger.error("Mongo DB disconnected Poller stopping...")
+        if(mongoose.connection.readyState === 0){
+            logger.error("Mongo DB disconnected Poller stopping...");
+            break;
+        }
         if (networkName === 'azalea') {
             provider = new ethers.providers.AlchemyProvider(process.env.ETH_NETWORK,
                 process.env.AlCHEMY_API_KEY
