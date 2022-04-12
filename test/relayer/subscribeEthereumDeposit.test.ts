@@ -56,7 +56,7 @@ describe('subscribeEthereumDeposit', () => {
     await verifyClaimChannel.close();
     await rabbit.close();
     provider.removeAllListeners();
-  })
+  });
 
   describe('Deposit Publisher', () => {
     it('Should publish Message into RabbitMQ when Deposit occurs', (done ) => {
@@ -99,11 +99,12 @@ describe('subscribeEthereumDeposit', () => {
                     while(true){
                       //TODO figure out why extrinsic failing should be success
                       const foundTx = await BridgeClaim.findOne({status: "Failed"});
-                      if(foundTx) done();
+                      if(foundTx) break
                       await wait(1);
                     }
                   }
                   await dbPoller();
+                  done();
                 })
               }
             }}

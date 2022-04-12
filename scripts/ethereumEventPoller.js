@@ -20,6 +20,8 @@ async function pollDepositEvents( networkName, interval, pegContractAddress, pro
     await channel.assertQueue(TOPIC_CENNZnet_CONFIRM);
     const shouldPoll = true;
     while (shouldPoll){
+        //stop poller if DB disconnects
+        if(mongoose.connection.readyState === 0) logger.error("Mongo DB disconnected Poller stopping...")
         if (networkName === 'azalea') {
             provider = new ethers.providers.AlchemyProvider(process.env.ETH_NETWORK,
                 process.env.AlCHEMY_API_KEY
@@ -37,7 +39,7 @@ async function pollDepositEvents( networkName, interval, pegContractAddress, pro
                 api = await Api.create({provider: 'wss://rata.centrality.me/public/ws'})
             }
         }
-        if(providerOverride) provider = providerOverride
+        if(providerOverride) provider = providerOverride;
         //Get all bridge claims and deposit events on
         const peg = new ethers.Contract(pegContractAddress, pegAbi, provider);
         const allEvents = await peg.queryFilter({});
@@ -46,7 +48,7 @@ async function pollDepositEvents( networkName, interval, pegContractAddress, pro
         const allDepositClaims = await BridgeClaim.find({});
         const allDepositClaimsTxHashes = allDepositClaims.map(claim => claim.txHash);
         const missedDepositEventHashes = depositEventTxHashes.filter(txhash => !allDepositClaimsTxHashes.includes(txhash))
-        logger.info("Current Missed Deposit Events Number: ", missedDepositEventHashes.length.toString());
+        logger.info("Current Missed Deposit Events Number: ", missedDepositEventHashes.length);
         //get the event for each and submit
         const eventConfirmations = (await api.query.ethBridge.eventConfirmations()).toNumber();
         const missedEventProms = missedDepositEventHashes.map(async txHash => {
