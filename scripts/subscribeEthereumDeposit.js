@@ -32,16 +32,7 @@ async function airDrop(claimId, signer, api, spendingAssetId) {
             });
         }
     } else {
-        const { statusCode, data } = await curly.post(`https://hooks.slack.com/services/${process.env.SLACK_SECRET}`, {
-            postFields: JSON.stringify({
-                "text": ` 🚨 To keep the claim relayer airdrop cpay, topup the cennznet account ${signer.address} on CENNZnets ${process.env.NETWORK} chain`
-            }),
-            httpHeader: [
-                'Content-Type: application/json',
-                'Accept: application/json'
-            ],
-        });
-        logger.info(`CLAIM Slack notification sent ${data} and status code ${statusCode}`);
+        await sendSlackAlert( ` 🚨 To keep the claim relayer airdrop cpay, topup the cennznet account ${signer.address} on CENNZnets ${process.env.NETWORK} chain`);
     }
 }
 
@@ -318,24 +309,46 @@ async function mainSubscriber(networkName, providerOverride= false, apiOverride 
         catch (e) {
             //if already sent claim dont try to resend
             if(e.message === "AlreadyNotarized") return;
-            //TODO Alert slack if all retries fail
-            const failedCB = () => { console.info("failed all TOPIC_VERIFY_CONFIRM retries")}
-            await retryMessage(sendClaimChannel, message, initialDelay, maxRetries, failedCB)
+            const data = JSON.parse(message.content.toString());
+            const failedCB = () => {sendSlackAlert(
+                `🚨 All retries failed for Message TOPIC_CENNZnet_CONFIRM 🚨
+                \n ETH Transaction: ${data.txHash} 
+                \n Beneficiary: ${data.claim.beneficiary}  
+                \n Blocknumber: ${data.blockNumber}
+                \n Error: ${e.message} `)}
+            await retryMessage(sendClaimChannel, TOPIC_CENNZnet_CONFIRM, message, initialDelay, maxRetries, failedCB)
         }
     });
     verifyClaimChannel.consume(TOPIC_VERIFY_CONFIRM, async (message)=> {
         try{
             logger.info(`Received Message TOPIC_VERIFY_CONFIRM: ${message.content.toString()}`);
-            const data = JSON.parse(message.content.toString());
+            const data = message.content.toString();
             await verifyClaimSubscriber(data, api, signer);
             verifyClaimChannel.ack(message);
         }
         catch (e) {
-            //TODO Alert slack if all retries fail
-            const failedCB = () => {console.info("failed all TOPIC_VERIFY_CONFIRM retries")}
-            await retryMessage(verifyClaimChannel, message, initialDelay, maxRetries, failedCB)
+            const data = JSON.parse(message.content.toString());
+            const failedCB = () => {sendSlackAlert(
+                `🚨 All retries failed for Message TOPIC_VERIFY_CONFIRM 🚨
+                \n Event Claim Id: ${data.eventClaimId} 
+                \n Blocknumber: ${data.blockNumber}
+                \n Error: ${e.message} `)}
+            await retryMessage(verifyClaimChannel, TOPIC_VERIFY_CONFIRM, message, initialDelay, maxRetries, failedCB)
         }
     });
+}
+
+async function sendSlackAlert(message) {
+    const { statusCode, data } = await curly.post(`https://hooks.slack.com/services/${process.env.SLACK_SECRET}`, {
+        postFields: JSON.stringify({
+            "text": message
+        }),
+        httpHeader: [
+            'Content-Type: application/json',
+            'Accept: application/json'
+        ],
+    });
+    logger.info(`CLAIM Slack notification sent ${data} and status code ${statusCode}`);
 }
 
 async function wait(seconds) {
@@ -346,7 +359,7 @@ async function wait(seconds) {
     });
 }
 
-async function retryMessage( channel, message, initialDelay, maxRetries, failedCallback ) {
+async function retryMessage( channel, queueName, message, initialDelay, maxRetries, failedCallback ) {
     try {
         const headers = message.properties.headers || {};
         const retryCount = ( headers[ "x-retries" ] || 0 ) + 1;
@@ -360,7 +373,7 @@ async function retryMessage( channel, message, initialDelay, maxRetries, failedC
             headers[ "x-retries" ] = retryCount;
             message.properties.headers = headers;
             await wait(delayAmountSeconds);
-            await channel.sendToQueue(TOPIC_CENNZnet_CONFIRM, message.content, message.properties);
+            await channel.sendToQueue(queueName, message.content, message.properties);
             channel.ack( message );
         }
     }
