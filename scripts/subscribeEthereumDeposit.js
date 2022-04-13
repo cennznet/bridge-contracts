@@ -322,7 +322,7 @@ async function mainSubscriber(networkName, providerOverride= false, apiOverride 
     verifyClaimChannel.consume(TOPIC_VERIFY_CONFIRM, async (message)=> {
         try{
             logger.info(`Received Message TOPIC_VERIFY_CONFIRM: ${message.content.toString()}`);
-            const data = message.content.toString();
+            const data = JSON.parse(message.content.toString());
             await verifyClaimSubscriber(data, api, signer);
             verifyClaimChannel.ack(message);
         }
