@@ -96,7 +96,6 @@ async function sendClaim(claim, transactionHash, api, nonce, signer) {
                         if(index.toNumber() === 22 && error.toNumber() === 6) {
                             //TODO need to find way of getting claimId from ETH tx hash to find if already verified
                             await updateTxStatusInDB( 'AlreadyNotarized', transactionHash, null, claim.beneficiary);
-                            reject('AlreadyNotarized');
                             reject(new Error("AlreadyNotarized"));
                         }
                         await updateTxStatusInDB( 'Failed', transactionHash, null, claim.beneficiary);
@@ -206,13 +205,12 @@ async function mainPublisher(networkName, pegContractAddress, providerOverride= 
     }
 
     // Keep track of latest finalized block
-    await api.rpc.chain
+    api.rpc.chain
         .subscribeFinalizedHeads(async (head) => {
             const blockNumber = head.number.toNumber();
             logger.info(`HEALTH CHECK => OK`);
             logger.info(`At blocknumber: ${blockNumber}`);
-            latestFinalizedBlockNumber = blockNumber;
-        });
+    });
 
     const peg = new ethers.Contract(pegContractAddress, pegAbi, provider);
     logger.info(`Connecting to CENNZnet peg contract ${pegContractAddress}...`);
@@ -232,15 +230,15 @@ async function mainPublisher(networkName, pegContractAddress, providerOverride= 
 async function handleDepositEvent(api, transactionHash, cennznetAddress, amount, tokenAddress, eventConfirmations, channel ) {
     const checkIfBridgePause = await api.query.ethBridge.bridgePaused();
     if (!checkIfBridgePause.toHuman()) {
-        await updateTxStatusInDB('EthereumConfirming', transactionHash, null, cennznetAddress);
         const claim = {
             tokenAddress,
             amount: amount.toString(),
             beneficiary: cennznetAddress
         };
-        await updateClaimEventsInDB({txHash: transactionHash, tokenAddress, amount, beneficiary: cennznetAddress});
-        const data = { txHash: transactionHash, claim, confirms: eventConfirmations, blockNumber:latestFinalizedBlockNumber }
+        const data = { txHash: transactionHash, claim, confirms: eventConfirmations }
         await channel.sendToQueue(TOPIC_CENNZnet_CONFIRM, Buffer.from(JSON.stringify(data)));
+        await updateTxStatusInDB('EthereumConfirming', transactionHash, null, cennznetAddress);
+        await updateClaimEventsInDB({txHash: transactionHash, tokenAddress, amount, beneficiary: cennznetAddress});
     logger.info(`Deposit Event handled for TxHash...${transactionHash}`);
     } else {
         await updateTxStatusInDB('Bridge Paused', transactionHash, null, cennznetAddress);
@@ -280,13 +278,12 @@ async function mainSubscriber(networkName, providerOverride= false, apiOverride 
         provider = new ethers.providers.InfuraProvider(process.env.ETH_NETWORK, process.env.INFURA_API_KEY);
     }
     // Keep track of latest finalized block
-    await api.rpc.chain
+    api.rpc.chain
         .subscribeFinalizedHeads(async (head) => {
             const blockNumber = head.number.toNumber();
             logger.info(`HEALTH CHECK => OK`);
             logger.info(`At blocknumber: ${blockNumber}`);
-            latestFinalizedBlockNumber = blockNumber;
-        });
+    });
     //Setup rabbitMQ
     if (!sendClaimChannel){
         sendClaimChannel = await rabbit.createChannel();
@@ -394,7 +391,6 @@ const TOPIC_CENNZnet_CONFIRM = `STATE_CENNZ_CONFIRM_${queueNetwork}`;
 const TOPIC_VERIFY_CONFIRM = `STATE_VERIFY_CONFIRM_${queueNetwork}`;
 let nonce;
 let firstMessage = true;
-let latestFinalizedBlockNumber;
 
 if(state === "publisher") mainPublisher(networkName, pegContractAddress).catch((err) => logger.error(err));
 else if (state === "subscriber") mainSubscriber(networkName).catch((err) => logger.error(err));
