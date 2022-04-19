@@ -193,25 +193,30 @@ async function main (networkName, bridgeContractAddress, pegContractAddress) {
         //get the proofId/eventId in transaction hash
         logger.info(`Got the Withdraw event...${JSON.stringify(event)}`);
         logger.info('*****************************************************');
-        const tx = await wsProvider.getTransaction(event.transactionHash);
-        const decodedTx = pegInterface.parseTransaction({ data: tx.data, value: tx.value});
-        const eventId = parseInt(decodedTx.args[3].eventId.toString());
-        //confirm withdraw on contract
-        const hasClaimed = await bridge.eventIds(eventId);
-        const withdrawalProof = await WithdrawProof.findOne().elemMatch("withdrawals",{ "proofId": eventId });
-        if (withdrawalProof) {
-            //get correct proof in array and update
-            withdrawalProof.withdrawals = withdrawalProof.withdrawals.map(withdrawal => {
-                if (withdrawal.proofId === eventId.toString()) {
-                    withdrawal.hasClaimed = hasClaimed;
-                    return withdrawal;
-                } else {
-                    return withdrawal;
-                }
-            });
-            await withdrawalProof.save();
-        }
+        await handleWithdrawEvent(event, wsProvider, pegInterface, bridge);
     });
+}
+
+async function handleWithdrawEvent(event, wsProvider, pegInterface, bridgeContract){
+    const tx = await wsProvider.getTransaction(event.transactionHash);
+    const decodedTx = pegInterface.parseTransaction({ data: tx.data, value: tx.value});
+    const eventId = parseInt(decodedTx.args[3].eventId.toString());
+    //confirm withdraw on contract
+    const hasClaimed = await bridgeContract.eventIds(eventId);
+    const withdrawalProof = await WithdrawProof.findOne().elemMatch("withdrawals",{ "proofId": eventId });
+    if (withdrawalProof) {
+        //get correct proof in array and update
+        withdrawalProof.withdrawals = withdrawalProof.withdrawals.map(withdrawal => {
+            if (withdrawal.proofId === eventId.toString()) {
+                withdrawal.hasClaimed = hasClaimed;
+                return withdrawal;
+            } else {
+                return withdrawal;
+            }
+        });
+        await withdrawalProof.save();
+        logger.info(`Withdraw event Successfully Updated. ETH Tx Hash: ${JSON.stringify(event.transactionHash)}`);
+    }
 }
 
 async function withTimeout(promise, timeoutMs) {
@@ -229,4 +234,6 @@ const networkName = process.env.NETWORK;
 const bridgeContractAddress = process.env.BRIDGE_CONTRACT;
 const pegContractAddress = process.env.PEG_CONTRACT;
 main(networkName, bridgeContractAddress, pegContractAddress).catch((err) => console.log(err));
+
+module.exports = {handleWithdrawEvent}
 
