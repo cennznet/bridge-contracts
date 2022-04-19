@@ -39,7 +39,7 @@ describe('subscribeEthereumDeposit', () => {
     bridge = await deployContract(wallet, CENNZnetBridge, []);
     erc20Peg = await deployContract(wallet, ERC20Peg, [bridge.address]);
     //ensure cache and db are clean
-    await mongoose.connect(process.env.MONGO_URI);
+    if(mongoose.connection.readyState !== 1) await mongoose.connect(process.env.MONGO_URI);
     await BridgeClaim.deleteMany({});
     await ClaimEvents.deleteMany({});
     rabbit = await amqp.connect(process.env.RABBIT_URL);
@@ -82,7 +82,7 @@ describe('subscribeEthereumDeposit', () => {
     it('Should consume Message and submit claim to cennznet', (done ) => {
       let depositAmount = 7;
       let cennznetAddress = '0xacd6118e217e552ba801f7aa8a934ea6a300a5b394e7c3f42cd9d6dd9a457c10';
-      mainPublisher("local", erc20Peg.address, provider, api, rabbit, sendClaimChannel, verifyClaimChannel).then(async () => {
+      mainPublisher("local", erc20Peg.address, provider, api, rabbit, sendClaimChannel).then(async () => {
         //activate cennznet deposits
         const keyring = new Keyring({type: 'sr25519'});
         const signer = keyring.addFromUri('//Alice');
@@ -94,7 +94,7 @@ describe('subscribeEthereumDeposit', () => {
             for (const {event: {method, section}} of events) {
               if (section === 'system' && method === 'ExtrinsicSuccess') {
                 //once publisher is live start subscriber and emit deposit event
-                mainSubscriber("local", provider, api, rabbit).then(async () => {
+                mainSubscriber("local", provider, api, rabbit, sendClaimChannel, verifyClaimChannel).then(async () => {
                   await erc20Peg.activateDeposits();
                   await testToken.approve(erc20Peg.address, depositAmount);
                   await erc20Peg.deposit(testToken.address, depositAmount, cennznetAddress);

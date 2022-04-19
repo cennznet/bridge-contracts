@@ -285,14 +285,19 @@ async function mainSubscriber(networkName, providerOverride= false, apiOverride 
             logger.info(`At blocknumber: ${blockNumber}`);
     });
     //Setup rabbitMQ
+    const consumerMessageLimit = 10;
+    const messageTimeout = 60000 * 5; //5 minutes
+
     if (!sendClaimChannel){
         sendClaimChannel = await rabbit.createChannel();
-        await sendClaimChannel.assertQueue(TOPIC_CENNZnet_CONFIRM);
+        await sendClaimChannel.assertQueue(TOPIC_CENNZnet_CONFIRM,{durable: true, messageTtl: messageTimeout});
     }
     if (!verifyClaimChannel){
         verifyClaimChannel = await rabbit.createChannel();
-        await verifyClaimChannel.assertQueue(TOPIC_VERIFY_CONFIRM);
+        await verifyClaimChannel.assertQueue(TOPIC_VERIFY_CONFIRM, {durable: true, messageTtl: messageTimeout});
     }
+    await sendClaimChannel.prefetch(consumerMessageLimit);
+    await verifyClaimChannel.prefetch(consumerMessageLimit);
     const initialDelay = 5000;
     const maxRetries = 3;
     sendClaimChannel.consume(TOPIC_CENNZnet_CONFIRM, async (message)=> {
