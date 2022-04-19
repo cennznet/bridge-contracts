@@ -102,7 +102,7 @@ docker run -e MONGO_URI="mongo+srv://<username>:<password>/bridgeDb" \
            cennznet/bridge-relayer yarn run claimRelayer ropsten|kovan|mainnet --state publisher|subscriber
            
 # Eth Event poller
-yarn run ethEventPoller --interval 10
+yarn run ethEventPoller --interval 10 --state withdraw|deposit
 
 # validator set relayer
 docker run \
