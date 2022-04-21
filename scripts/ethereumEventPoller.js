@@ -52,11 +52,7 @@ async function pollDepositEvents( networkName, interval, pegContractAddress, pro
         //check if any deposit tx hashes are not in DB yet
         const allDepositClaims = await BridgeClaim.find({});
         const allDepositClaimsTxHashes = allDepositClaims.map(claim => claim.txHash);
-        //get any events in db that were submitted when bridge paused
-        const pausedClaims = allDepositClaims.filter(claim => claim.status === "Bridge Paused");
-        const pausedClaimsTxHashes = pausedClaims.map(claim => claim.txHash);
         let missedDepositEventHashes = depositEventTxHashes.filter(txhash => !allDepositClaimsTxHashes.includes(txhash));
-        missedDepositEventHashes = missedDepositEventHashes.concat(pausedClaimsTxHashes);
         logger.info("Current Missed Deposit Events Number: ", missedDepositEventHashes.length);
         //get the event for each and submit
         const eventConfirmations = (await api.query.ethBridge.eventConfirmations()).toNumber();
