@@ -228,21 +228,16 @@ async function mainPublisher(networkName, pegContractAddress, providerOverride= 
 }
 
 async function handleDepositEvent(api, transactionHash, cennznetAddress, amount, tokenAddress, eventConfirmations, channel ) {
-    const checkIfBridgePause = await api.query.ethBridge.bridgePaused();
-    if (!checkIfBridgePause.toHuman()) {
-        const claim = {
-            tokenAddress,
-            amount: amount.toString(),
-            beneficiary: cennznetAddress
-        };
-        const data = { txHash: transactionHash, claim, confirms: eventConfirmations }
-        await channel.sendToQueue(TOPIC_CENNZnet_CONFIRM, Buffer.from(JSON.stringify(data)));
-        await updateTxStatusInDB('EthereumConfirming', transactionHash, null, cennznetAddress);
-        await updateClaimEventsInDB({txHash: transactionHash, tokenAddress, amount, beneficiary: cennznetAddress});
+    const claim = {
+        tokenAddress,
+        amount: amount.toString(),
+        beneficiary: cennznetAddress
+    };
+    const data = { txHash: transactionHash, claim, confirms: eventConfirmations }
+    await channel.sendToQueue(TOPIC_CENNZnet_CONFIRM, Buffer.from(JSON.stringify(data)));
+    await updateTxStatusInDB('EthereumConfirming', transactionHash, null, cennznetAddress);
+    await updateClaimEventsInDB({txHash: transactionHash, tokenAddress, amount, beneficiary: cennznetAddress});
     logger.info(`Deposit Event handled for TxHash...${transactionHash}`);
-    } else {
-        await updateTxStatusInDB('Bridge Paused', transactionHash, null, cennznetAddress);
-    }
 }
 
 async function mainSubscriber(networkName, providerOverride= false, apiOverride = false, rabbitOverride = false, sendClaimChannel = false, verifyClaimChannel= false) {
