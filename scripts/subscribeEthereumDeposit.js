@@ -182,6 +182,7 @@ async function mainPublisher(networkName, pegContractAddress, providerOverride= 
     let rabbit;
     if(rabbit) rabbit = rabbitOverride;
     else rabbit = await amqp.connect(process.env.RABBIT_URL);
+    logger.info(`Rabbit MQ Connected to Host:  ${rabbit.connection.stream._host}`);
     if(apiOverride) api = apiOverride;
     else api = await Api.create({network: networkName});
     logger.info(`Connect to cennznet network ${networkName}`);
@@ -248,6 +249,7 @@ async function mainSubscriber(networkName, providerOverride= false, apiOverride 
     let rabbit;
     if(rabbit) rabbit = rabbitOverride;
     else rabbit = await amqp.connect(process.env.RABBIT_URL);
+    logger.info(`Rabbit MQ Connected to Host:  ${rabbit.connection.stream._host}`);
     if(apiOverride) api = apiOverride;
     else api = await Api.create({network: networkName});
     logger.info(`Connected to cennznet network ${networkName}`);
