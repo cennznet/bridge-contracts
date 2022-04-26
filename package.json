@@ -22,7 +22,10 @@
     "claimRelayer": "node scripts/subscribeEthereumDeposit.js",
     "publish": "npx hardhat verify --network $1 $2",
     "withdrawListener": "node scripts/subscribeWithdrawTx.js",
-    "test": "yarn build && env TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\", \"esModuleInterop\": true, \"resolveJsonModule\": true, \"types\": [\"@types/mocha\"] }' mocha -r ts-node/register 'test/**/*.test.ts'"
+    "ethEventPoller": "node scripts/ethereumEventPoller.js",
+    "test": "yarn build && env TS_NODE_PROJECT='./tsconfig.commonjs.json' mocha -r ts-node/register 'test/**/*.test.ts' --timeout 30000 --exit",
+    "test:withLocalNode": "concurrently --kill-others --success \"first\" \"yarn start:node\" \"wait-on tcp:9933 && yarn build && env TS_NODE_PROJECT='./tsconfig.commonjs.json' mocha -r ts-node/register 'test/**/*.test.ts' --timeout 30000 --exit\"",
+    "start:node": "docker run -p 9933:9933 -p 9944:9944 cennznet/cennznet:2.1.0 --dev --unsafe-ws-external --unsafe-rpc-external"
   },
   "resolutions": {
     "@ethersproject/contracts": "5.4.0"
@@ -48,11 +51,14 @@
   "dependencies": {
     "@types/chai": "^4.2.19",
     "@types/mocha": "^8.2.2",
+    "amqplib": "^0.8.0",
+    "concurrently": "^7.1.0",
     "dotenv": "^8.2.0",
     "elliptic": "^6.5.4",
     "ethereum-waffle": "^3.4.0",
     "moment": "^2.29.1",
     "node-libcurl": "^2.3.3",
+    "wait-on": "^6.0.1",
     "winston": "^3.2.1"
   },
   "devDependencies": {
@@ -61,6 +67,8 @@
     "@nomiclabs/hardhat-etherscan": "^2.1.7",
     "@nomiclabs/hardhat-waffle": "^2.0.1",
     "@openzeppelin/contracts": "^4.4.2",
+    "@polkadot/keyring": "5.9.2",
+    "@polkadot/util": "5.9.2",
     "@types/node": "^16.7.13",
     "bignumber.js": "^7.2.1",
     "chai": "^4.3.4",

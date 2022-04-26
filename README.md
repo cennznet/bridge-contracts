@@ -68,6 +68,18 @@ yarn deploy
 yarn eth_e2e
 ```
 
+### Local Relayer Service
+To start a relayer service locally you need:
+- To run local rabbitMQ. installation steps [here](https://www.rabbitmq.com/download.html)
+- To run local mongodb. installation steps [here](https://zellwk.com/blog/install-mongodb/)
+- Ensure you have env vars set:
+  
+  `MSG_QUEUE_NETWORK=local`
+  
+  `RABBIT_URL=amqp://localhost:5672`
+  
+  `MONGO_URI=mongodb://127.0.0.1:27017/bridgeDbNikau`
+
 ## Publish contract
 ```bash
 yarn publish CONTRACT_ADDRESS ARGS
@@ -80,14 +92,17 @@ docker run -p 3000:3000 \
     -e MONGO_URI="mongo+srv://<username>:<password>/bridgeDb" \
     cennznet/bridge-relayer yarn run api
 
-# depositClaim relayer
+# depositClaim relayer pub/sub
 docker run -e MONGO_URI="mongo+srv://<username>:<password>/bridgeDb" \
            -e NETWORK="rata|nikau|azalea" \
            -e PEG_CONTRACT="0x...." \
            -e CENNZNET_SECRET="0x12312321 | //<uri>" \
            -e SLACK_SECRET="......" \
            -e ETH_ACCOUNT_KEY="0x..." \
-           cennznet/bridge-relayer yarn run claimRelayer ropsten|kovan|mainnet
+           cennznet/bridge-relayer yarn run claimRelayer ropsten|kovan|mainnet --state publisher|subscriber
+           
+# Eth Event poller
+yarn run ethEventPoller --interval 10 --state withdraw|deposit
 
 # validator set relayer
 docker run \
