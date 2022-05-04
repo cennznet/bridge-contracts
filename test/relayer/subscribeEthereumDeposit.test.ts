@@ -43,12 +43,13 @@ describe('subscribeEthereumDeposit', () => {
     await BridgeClaim.deleteMany({});
     await ClaimEvents.deleteMany({});
     rabbit = await amqp.connect(process.env.RABBIT_URL);
+    const messageTimeout = 60000 * 5; //5 minutes
     sendClaimChannel = await rabbit.createChannel();
     verifyClaimChannel = await rabbit.createChannel();
     sendClaimChannel.deleteQueue(TOPIC_CENNZnet_CONFIRM);
     verifyClaimChannel.deleteQueue(TOPIC_VERIFY_CONFIRM);
-    await sendClaimChannel.assertQueue(TOPIC_CENNZnet_CONFIRM);
-    await verifyClaimChannel.assertQueue(TOPIC_VERIFY_CONFIRM);
+    await sendClaimChannel.assertQueue(TOPIC_CENNZnet_CONFIRM, {durable: true, messageTtl: messageTimeout});
+    await verifyClaimChannel.assertQueue(TOPIC_VERIFY_CONFIRM, {durable: true, messageTtl: messageTimeout});
   });
 
   afterEach(async () => {
