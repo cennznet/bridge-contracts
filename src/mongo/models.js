@@ -60,6 +60,17 @@ const proofsSchema = new Schema( {
     validators: []
 }, { collection: EVENT_PROOF });
 
+const LastBlockScannedCol = "LastBlockScan";
+const LastBlockScanSchema = new Schema(
+    {
+        _id: String,
+        processedBlock: { type: String, default: "0" },
+        finalizedBlock: String,
+    },
+    { collection: LastBlockScannedCol }
+);
+
+
 module.exports = {
     BridgeClaim: mongoose.model('BridgeClaim', BridgeClaimSchema),
     BRIDGE_CLAIM,
@@ -70,5 +81,7 @@ module.exports = {
     WithdrawProof: mongoose.model('WithdrawProof', WithdrawProofSchema),
     WITHDRAW_PROOF,
     EventProof: mongoose.model('EventProof', proofsSchema),
-    EVENT_PROOF
+    EVENT_PROOF,
+    LastBlockScan: mongoose.model("LastBlockScan", LastBlockScanSchema),
+    LastBlockScannedCol,
 };
