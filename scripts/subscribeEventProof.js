@@ -195,6 +195,7 @@ async function main (networkName, bridgeContractAddress) {
             const update = { finalizedBlock: finalizedBlockAt };
             await updateBlockScanned(update);
         });
+
     while (true) {
         const blockScanned = await LastBlockScan.findOne({});
         if (blockScanned) {

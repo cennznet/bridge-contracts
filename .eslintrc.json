@@ -11,5 +11,6 @@
         "allowImportExportEverywhere": true
     },
     "rules": {
+        "no-constant-condition": "off"
     }
 }
