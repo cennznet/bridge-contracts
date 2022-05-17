@@ -1,5 +1,6 @@
+
 const { Api } = require('@cennznet/api');
-const { Keyring } = require('@polkadot/keyring');
+const { encodeAddress, Keyring } = require('@polkadot/keyring');
 const logger = require('./logger');
 const mongoose = require('mongoose');
 const { BridgeClaim, ClaimEvents  } = require('../src/mongo/models');
@@ -9,7 +10,6 @@ const { hexToU8a } = require("@polkadot/util");
 const pegAbi = require("../abi/ERC20Peg.json").abi;
 const BigNumber =  require("bignumber.js");
 const amqp = require("amqplib");
-
 require("dotenv").config();
 
 async function airDrop(claimId, signer, api, spendingAssetId) {
@@ -77,7 +77,8 @@ async function sendClaim(claim, transactionHash, api, nonce, signer) {
                 const blockNumber =  block.block.header.number.toNumber();
                 for (const {event: {method, section, data}} of events) {
                     const [, claimer] = data;
-                    if (section === 'erc20Peg' && method == 'Erc20Claim' && claimer && claimer.toString() === signer.address) {
+                    if (section === 'erc20Peg' && method == 'Erc20Claim' && claimer &&
+                        (claimer.toString() === signer.address || claimer.toString() === encodeAddress(claim.beneficiary))) {
                         const eventClaimId = data[0].toString();
                         logger.info('CLAIM: *******************************************');
                         logger.info('CLAIM: at block number: ',blockNumber);
