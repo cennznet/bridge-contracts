@@ -76,9 +76,9 @@ async function sendClaim(claim, transactionHash, api, nonce, signer) {
                 const block = await api.rpc.chain.getBlock(blockHash);
                 const blockNumber =  block.block.header.number.toNumber();
                 for (const {event: {method, section, data}} of events) {
-                    const [, claimer] = data;
-                    if (section === 'erc20Peg' && method == 'Erc20Claim' && claimer &&
-                        (claimer.toString() === signer.address || claimer.toString() === encodeAddress(claim.beneficiary))) {
+                    const [, address] = data;
+                    if (section === 'erc20Peg' && method == 'Erc20Claim' && address &&
+                        (address.toString() === signer.address || address.toString() === encodeAddress(claim.beneficiary))) {
                         const eventClaimId = data[0].toString();
                         logger.info('CLAIM: *******************************************');
                         logger.info('CLAIM: at block number: ',blockNumber);

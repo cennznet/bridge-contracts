@@ -99,9 +99,9 @@ async function main() {
             if (status.isInBlock) {
                 for (const {event: {method, section, data}} of events) {
                     console.log('\t', `: ${section}.${method}`, data.toString());
-                    const [, claimer] = data;
-                    if (section === 'erc20Peg' && method == 'Erc20Claim' && claimer &&
-                        (claimer.toString() === alice.address || claimer.toString() === encodeAddress(claim.beneficiary))) {
+                    const [, address] = data;
+                    if (section === 'erc20Peg' && method == 'Erc20Claim' && address &&
+                        (address.toString() === alice.address || address.toString() === encodeAddress(claim.beneficiary))) {
                         eventClaimId = data[0];
                         console.log('*******************************************');
                         console.log('Deposit claim on CENNZnet side started for claim Id', eventClaimId.toString());
