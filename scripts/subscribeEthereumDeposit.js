@@ -1,4 +1,3 @@
-
 const { Api } = require('@cennznet/api');
 const { encodeAddress, Keyring } = require('@polkadot/keyring');
 const logger = require('./logger');
