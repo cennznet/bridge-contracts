@@ -4,7 +4,7 @@ require("dotenv").config();
 const logger = require('./logger');
 const { curly } = require("node-libcurl");
 const mongoose = require('mongoose');
-const { EventProcessed  } = require('../src/mongo/models');
+const { EventProcessed, LastBlockScan  } = require('../src/mongo/models');
 const ethers = require('ethers');
 const bridgeAbi = require("../abi/CENNZnetBridge.json").abi;
 
@@ -141,6 +141,15 @@ async function main (networkName, bridgeContractAddress) {
         process.env.INFURA_API_KEY
     );
 
+    const setProcessedBlock = process.env.BOOTSTRAP;
+    // for the first start set processed block
+    if (setProcessedBlock === 'true') {
+        const currentFinalizedHeadHash = await api.rpc.chain.getFinalizedHead();
+        const block = await api.rpc.chain.getBlock(currentFinalizedHeadHash);
+        const blockNo = block.block.header.number.toString();
+        await updateBlockScanned({ processedBlock: blockNo });
+    }
+
     let wallet = new ethers.Wallet(process.env.ETH_ACCOUNT_KEY, infuraProvider);
 
     const bridge = new ethers.Contract(bridgeContractAddress, bridgeAbi, wallet);
@@ -181,22 +190,44 @@ async function main (networkName, bridgeContractAddress) {
 
     await api.rpc.chain
         .subscribeFinalizedHeads(async (head) => {
-            const blockNumber = head.number.toNumber();
-            logger.info(`At blocknumber: ${blockNumber}`);
-
-            const blockHash = head.hash.toString();
-            const events = await api.query.system.events.at(blockHash);
-            events.map(async ({event}) => {
-                const { section, method, data } = event;
-                if (section === 'ethBridge' && method === 'AuthoritySetChange') {
-                    const dataFetched = data.toHuman();
-                    const eventIdFound = dataFetched[0];
-                    const newValidatorSetId = parseInt(dataFetched[1]);
-                    logger.info(`IMP Event found at block ${blockNumber} hash ${blockHash} event id ${eventIdFound}`);
-                    await getEventPoofAndSubmit(api, eventIdFound, bridge, wallet, newValidatorSetId.toString(), blockHash, infuraProvider);
-                }
-            })
+            const finalizedBlockAt = head.number.toString();
+            logger.info(` finalizedBlockAt::${finalizedBlockAt}`);
+            const update = { finalizedBlock: finalizedBlockAt };
+            await updateBlockScanned(update);
         });
+
+    while (true) {
+        const blockScanned = await LastBlockScan.findOne({});
+        if (blockScanned) {
+            const {processedBlock, finalizedBlock} = blockScanned;
+            const processBlockNumber = parseInt(processedBlock);
+            const finalizedBlockNumber = parseInt(finalizedBlock);
+            if (processBlockNumber < finalizedBlockNumber) {
+                for (let blockNumber = processBlockNumber; blockNumber < finalizedBlock; blockNumber++) {
+                    logger.info(`At blocknumber: ${blockNumber}`);
+
+                    const blockHash = await api.rpc.chain.getBlockHash(blockNumber);
+                    const events = await api.query.system.events.at(blockHash);
+                    events.map(async ({event}) => {
+                        const { section, method, data } = event;
+                        if (section === 'ethBridge' && method === 'AuthoritySetChange') {
+                            const dataFetched = data.toHuman();
+                            const eventIdFound = dataFetched[0];
+                            const newValidatorSetId = parseInt(dataFetched[1]);
+                            logger.info(`IMP Event found at block ${blockNumber} hash ${blockHash} event id ${eventIdFound}`);
+                            await getEventPoofAndSubmit(api, eventIdFound, bridge, wallet, newValidatorSetId.toString(), blockHash, infuraProvider);
+                        }
+                    });
+                    await updateBlockScanned({ processedBlock: blockNumber.toString() });
+                }
+            }
+        }
+        await sleep(500);
+    }
+}
+
+function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function withTimeout(promise, timeoutMs) {
@@ -213,3 +244,11 @@ async function withTimeout(promise, timeoutMs) {
 const networkName = process.env.NETWORK;
 const bridgeContractAddress = process.env.BRIDGE_CONTRACT;
 main(networkName, bridgeContractAddress).catch((err) => console.log(err));
+
+
+async function updateBlockScanned(update) {
+    const filter = {};
+    const options = { upsert: true, new: true, setDefaultsOnInsert: true }; // create new if record does not exist, else update
+    await LastBlockScan.updateOne(filter, update, options);
+    logger.info(`Updated the block in db..${JSON.stringify(update)}`);
+}
