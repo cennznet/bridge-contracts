@@ -117,7 +117,7 @@ jobs:
       run: |
         docker network create my-bridge-net
         docker run --pull=always --network=my-bridge-net --name ethNode -p 8545:8545 -p 30303:30303 -d ethereumoptimism/hardhat
-        docker run --pull=always --network=my-bridge-net --name testnet_node_alice -p 9944:9944 -d cennznet/cennznet:2.1.0 --dev --tmp --unsafe-ws-external --unsafe-rpc-external --eth-http=http://ethNode:8545 --no-mdns
+        docker run --pull=always --network=my-bridge-net --name testnet_node_alice -p 9944:9944 -d cennznet/cennznet:latest --dev --tmp --unsafe-ws-external --unsafe-rpc-external --eth-http=http://ethNode:8545 --no-mdns
         docker exec testnet_node_alice curl ethNode:8545
     # - name: deposit/withdraw scenarios for erc20 tokens
     #   env:

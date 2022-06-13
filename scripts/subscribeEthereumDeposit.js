@@ -1,7 +1,7 @@
 
 const { Api } = require('@cennznet/api');
 require("dotenv").config();
-const { Keyring } = require('@polkadot/keyring');
+const { encodeAddress, Keyring } = require('@polkadot/keyring');
 const logger = require('./logger');
 const mongoose = require('mongoose');
 const { BridgeClaim  } = require('../src/mongo/models');
@@ -58,8 +58,9 @@ async function sendClaim(claim, transactionHash, api, signer, nonce) {
             if (status.isInBlock) {
                 for (const {event: {method, section, data}} of events) {
                     console.log('\t', `: ${section}.${method}`, data.toString());
-                    const [, claimer] = data;
-                    if (section === 'erc20Peg' && method == 'Erc20Claim' && claimer && claimer.toString() === signer.address) {
+                    const [, address] = data;
+                    if (section === 'erc20Peg' && method == 'Erc20Claim' && address &&
+                        (address.toString() === signer.address || address.toString() === encodeAddress(claim.beneficiary))) {
                         const eventClaimId = data[0];
                         console.log('*******************************************');
                         console.log('Deposit claim on CENNZnet side started for claim Id', eventClaimId.toString());
