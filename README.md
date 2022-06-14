@@ -1,5 +1,5 @@
 # bridge-contracts
-CENNZnet ethereum bridge contracts. 
+CENNZnet ethereum bridge contracts.
 
 __CENNZnet Bridge__  
 Maintains the active and historic set of CENNZnet validator public keys / addresses
