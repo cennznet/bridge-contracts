@@ -5,8 +5,8 @@ name: "Image Builder"
 on:
   push:
     branches:
-      - "main"
-      - "azalea"
+      - main
+      - azalea
     paths:
       - "**.js"
       - "**.json"
