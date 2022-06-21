@@ -88,8 +88,9 @@ async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, newValida
             logger.info('Gas price nw;:', gasPrice.toString());
 
             const gasEstimated = await bridge.estimateGas.setValidators(newValidators, newValidatorSetId, proof, {gasLimit: 5000000, gasPrice: increasedGasPrice});
-
-            logger.info(JSON.stringify(await bridge.setValidators(newValidators, newValidatorSetId, proof, {gasLimit: gasEstimated.add(BUFFER), gasPrice: increasedGasPrice})));
+            const tx = await bridge.setValidators(newValidators, newValidatorSetId, proof, {gasLimit: gasEstimated.add(BUFFER), gasPrice: increasedGasPrice});
+            await tx.wait(); // wait till tx is mined
+            logger.info(JSON.stringify(tx));
             await updateLastEventProcessed(eventId, blockHash.toString());
             const balance = await provider.getBalance(txExecutor.address);
             logger.info(`IMP Balance is: ${balance}`);
@@ -189,7 +190,7 @@ async function main (networkName, bridgeContractAddress) {
             events.map(async ({event}) => {
                 const { section, method, data } = event;
                 if (section === 'ethBridge' && method === 'AuthoritySetChange') {
-                    const dataFetched = data.toHuman();
+                    const dataFetched = data.toJSON();
                     const eventIdFound = dataFetched[0];
                     const newValidatorSetId = parseInt(dataFetched[1]);
                     logger.info(`IMP Event found at block ${blockNumber} hash ${blockHash} event id ${eventIdFound}`);
