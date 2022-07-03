@@ -8,6 +8,7 @@ const { u8aToString } = require('@polkadot/util');
 const ethers = require('ethers');
 const bridgeAbi = require("../abi/CENNZnetBridge.json").abi;
 const pegAbi = require("../abi/ERC20Peg.json").abi;
+const {cvmToAddress} = require("@cennznet/types/utils");
 
 let registeredAsset;
 const timeoutMs = 60000;
@@ -69,6 +70,37 @@ function scientificToDecimal(number) {
     return `${sign}${number}`;
 }
 
+function isWithdrawErc20Peg(tx) {
+    const extrinsicCall = tx.method.toHuman();
+    return (extrinsicCall.args.call.method === 'withdraw' && extrinsicCall.args.call.section === 'erc20Peg');
+}
+
+function fetchExtrinsicDetail(block) {
+    const withdrawTokenExt
+        = block.block.extrinsics.find(ex => ex.isSigned === true && ex.method.method === 'withdraw' && ex.method.section === 'erc20Peg');
+    if (withdrawTokenExt) {
+        return [withdrawTokenExt.hash.toString(), withdrawTokenExt.signer]; // extrinsicHash, signer
+    }
+    // check if blocks has any ethWallet txs
+    const ethWalletExts
+        = block.block.extrinsics.filter(ex => ex.method.method === 'call' && ex.method.section === 'ethWallet');
+
+    if (ethWalletExts.length > 0) {
+        // find the one with erc20Peg withdraw extrinsic
+        const pegWithdrawTx = ethWalletExts.find(tx => isWithdrawErc20Peg(tx));
+        if (!pegWithdrawTx) return [];
+        const extrinsicCall = pegWithdrawTx.method.toHuman();
+        const evmAddress = extrinsicCall.args.eth_address;
+        if (evmAddress) {
+            console.log('cennznet address:',cvmToAddress(evmAddress));
+            return [pegWithdrawTx.hash.toString(), cvmToAddress(evmAddress)]; // convert to cennznet address and return
+        } else {
+            return [];
+        }
+    }
+    return [];
+}
+
 async function getWithdrawProofAndUpdateDB(api, eventDetails, blockHash, bridge) {
     try {
         const [eventId, assetId, amountRaw, beneficiary] = eventDetails;
@@ -80,14 +112,8 @@ async function getWithdrawProofAndUpdateDB(api, eventDetails, blockHash, bridge)
         logger.info(`IMP WITHDRAW newValidators:${newValidators}`);
         logger.info(`IMP WITHDRAW event proof::${JSON.stringify(eventProof)}`);
         const rawBlock = await api.rpc.chain.getBlock(blockHash);
-        const block = rawBlock.toHuman();
-        const withdrawExtIndex
-            = block.block.extrinsics.findIndex(ex => ex.isSigned === true && ex.method.method === 'withdraw' && ex.method.section === 'erc20Peg');
-        const withdrawExt = block.block.extrinsics[withdrawExtIndex];
-        const rawExt = rawBlock.block.extrinsics[withdrawExtIndex];
-        const txHash = api.registry.createType('Extrinsic', rawExt).hash.toHex();
-        const cennznetAddress = withdrawExt ? withdrawExt.signer : '';
-        console.log('withdrawExt::',withdrawExt);
+
+        const [txHash, cennznetAddress] = fetchExtrinsicDetail(rawBlock);
 
         const proof = {
             eventId: eventProof.eventId,
