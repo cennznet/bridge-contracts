@@ -34,7 +34,7 @@ async function main() {
     let eventProof;
     const versionedEventProof = (await api.rpc.ethy.getEventProof(proofId)).toJSON();
     if (versionedEventProof !== null) {
-        eventProof = versionedEventProof.EventProof;
+        eventProof = versionedEventProof.eventProof;
     }
 
     if(!eventProof) {
