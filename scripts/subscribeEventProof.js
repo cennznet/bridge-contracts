@@ -88,19 +88,25 @@ async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, newValida
             logger.info('Gas price nw;:', gasPrice.toString());
 
             const gasEstimated = await bridge.estimateGas.setValidators(newValidators, newValidatorSetId, proof, {gasLimit: 5000000, gasPrice: increasedGasPrice});
-            const tx = await bridge.setValidators(newValidators, newValidatorSetId, proof, {gasLimit: gasEstimated.add(BUFFER), gasPrice: increasedGasPrice});
-            await tx.wait(); // wait till tx is mined
-            logger.info(JSON.stringify(tx));
-            await updateLastEventProcessed(eventId, blockHash.toString());
-            const balance = await provider.getBalance(txExecutor.address);
-            logger.info(`IMP Balance is: ${balance}`);
+            const eventExists = await bridge.eventIds(eventId.toString()); // check storage again, before sending event proof
+            if (!eventExists) {
+                const tx = await bridge.setValidators(newValidators, newValidatorSetId, proof, {
+                    gasLimit: gasEstimated.add(BUFFER),
+                    gasPrice: increasedGasPrice
+                });
+                await tx.wait(); // wait till tx is mined
+                logger.info(JSON.stringify(tx));
+                await updateLastEventProcessed(eventId, blockHash.toString());
+                const balance = await provider.getBalance(txExecutor.address);
+                logger.info(`IMP Balance is: ${balance}`);
 
-            logger.info(`IMP Gas price: ${gasPrice.toString()}`);
-            const gasRequired = gasEstimated.mul(gasPrice);
-            logger.info(`IMP Gas required: ${gasRequired.toString()}`);
-            if (balance.lt(gasRequired.mul(2))) {
-                const message = ` 🚨 To keep the validator relayer running, topup the eth account ${txExecutor.address} on CENNZnets ${process.env.NETWORK} chain`;
-                await sendSlackNotification(message);
+                logger.info(`IMP Gas price: ${gasPrice.toString()}`);
+                const gasRequired = gasEstimated.mul(gasPrice);
+                logger.info(`IMP Gas required: ${gasRequired.toString()}`);
+                if (balance.lt(gasRequired.mul(2))) {
+                    const message = ` 🚨 To keep the validator relayer running, topup the eth account ${txExecutor.address} on CENNZnets ${process.env.NETWORK} chain`;
+                    await sendSlackNotification(message);
+                }
             }
         } catch (e) {
             logger.warn('Something went wrong:');
