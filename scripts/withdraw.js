@@ -8,9 +8,9 @@ async function main() {
 
     prompt.start();
     //const {proofId, amount, recipient} = await prompt.get(['proofId', 'amount', 'recipient']);
-    const proofId = 433;
-    const amount = '0x000000000000000006b6f02b9734fff4';
-    const recipient = '0x8b7f8afef51534bb860900433ed69f282f070ef8';
+    const proofId = 456;
+    const amount = '0x000000000000000006d921fbe8cc6fe2';
+    const recipient = '0x335ec98baade1e25a255985dbe1d1af167619b59';
     const tokenAddress = ethers.constants.AddressZero;
     console.log(`claim withdrawal for:\nrecipient:${recipient},\namount:${amount},\ntoken:${tokenAddress}`);
     console.log(`on mainnet / mainnet`);
@@ -55,7 +55,58 @@ async function main() {
     });
 
     // query the validator addresses for you proof
-    const validators = [
+    const validators =  [
+        '0x177ecfe2f44f2a79f2f5ac1c7e797f78d4f69f78',
+        '0x6c4064aaeaef4c730a69a0289665bc14394588f9',
+        '0x9701f1a818c80a3432439c44afc1c71d7e6afca6',
+        '0x01bbc765e5c0e2be83757f7be1e0fa096365d95f',
+        '0xcde551215f494d2dd767cf485190cc90f9905a32',
+        '0x49019ae4de9476e094016340ef06bc25e56e845b',
+        '0x1121f24105bb9d01b69048c96476ed15beba8f87',
+        '0x26c8fd982d8405d76e67776699311226e12e4740',
+        '0x738436669adb1b82a26ae6f3e7c940605ed75f77',
+        '0xa5b0f642726b174cbdd29496a2850f922cefcf34',
+        '0xc43589e5fa02ef18e2ec0334af39b5788f805a2f',
+        '0x5e45ddbda199a835acffac5e32e6c9d94bfdff61',
+        '0x577c3368d5e1bbc7387f6df21a6c3740e70f7e64',
+        '0x9e4e381e3437578a7641d01ba088c6e4465b3bf9',
+        '0xa6a3a5a94607cad78dd0268784419589cb638fcb',
+        '0xd68331e3fa1ae3f34173109ba737ca1e51a23a0e',
+        '0x3bc5b0fa1889647c54c24c836e03d06b9fa15368',
+        '0x47676b8fc211394115de3f52c7ea9fd5e95f93a3',
+        '0x28161b6c51a301dd1cb99b2801f0cb294346b080',
+        '0x90b2280195e7cd93a485bebcec7470831a553cd8',
+        '0x3563698ab4ee172c89a2c3fc9813b7967e545239',
+        '0xff138adfb394bc786c14ef1169f55ab5ffcb27ee',
+        '0x51eac5f571b49c84ecfb53e99922512f81a2564a',
+        '0x6eae37ca97e261c681f278bd4e7af3d53ceaa2f2',
+        '0x8db2f517c938f104e95268e1a0e5b8e0f3e2568c',
+        '0xd513df8e3e7a3431eacd06d299c068ec6d653315',
+        '0x1e7fe213a0af9bc5269313ec026719de95b9bf0a',
+        '0xf878149f6aafd098c188e158e4bb15552931d81d',
+        '0x26179c868df77ca321da494002156948c4cb499c',
+        '0x76f4959340a9354f5e8ff11c459dfcf67db4c83a',
+        '0xbf1d9966154fe3a95c4c9c24bca6bac95780ee91',
+        '0x69c2c01a2c1a105b0f23b05f3e32ac62f9fa7bda',
+        '0x581ca4019facf6f898075eaf5f322979a7902cdc',
+        '0x3dff3c63cebf8271d435935b5b20924c5c13e8b6',
+        '0x52c52402984256122dd9bc196e49bf905e118bfa',
+        '0xf33b069514a5e93c1ee845f65186af0913321452',
+        '0x81ec41c5c780a067293c5dce75ac113c16bcdf00',
+        '0x23f39c46ffae5df598fa87cb142ef949c6b65535',
+        '0x3644ece3e899b5dcc913a4de957d1f5245291efa',
+        '0x51f077c68051095b1c6ed4a70c8adc856791b82e',
+        '0xb7a2118c4f72287c9224883ae02f4ef0325adbe1',
+        '0x8cddef39cd29b504b204347cfba0a3f45025510e',
+        '0xa5d0e80b51314fb96ef636b1e6569b090e227b3a',
+        '0x4238ad347cecaa407739b745f791180e9f0871b9',
+        '0x550f9954c0cf13c0eaaf548f214b10536a32ed9c',
+        '0x7fea4a19e16e6ec7efe091c0e9c4128ea499bc32',
+        '0xe4707e039560fef0906ba6fa8af800e7603aba76',
+        '0x122d785a86f54da45129ae968fd8cb6d1f6807e7',
+        '0x066997860ff5e7396e036d9fd43efcc56c15202b',
+        '0xa698369e18adf7d5ca3aeac84798f0d72c47dda1'
+    ];/*[
             '0x177ecfe2f44f2a79f2f5ac1c7e797f78d4f69f78',
             '0x6c4064aaeaef4c730a69a0289665bc14394588f9',
             '0x9701f1a818c80a3432439c44afc1c71d7e6afca6',
@@ -106,7 +157,7 @@ async function main() {
             '0xf61067021a7cdc23e6c1f196efa03cc7e16ce7eb',
             '0x066997860ff5e7396e036d9fd43efcc56c15202b',
             '0xa698369e18adf7d5ca3aeac84798f0d72c47dda1'
-    ];
+    ];*/
     console.log('make sure the proof validators addresses (ethBridge.notaryKeys) match');
     console.log(validators);
     const validatorsAnswer = await prompt.get(['y/n?']);
