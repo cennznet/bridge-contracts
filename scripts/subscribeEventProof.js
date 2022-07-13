@@ -86,10 +86,12 @@ async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, newValida
             logger.info('percentGasPrice:',percentGasPrice.toString());
             const increasedGasPrice = gasPrice.add(percentGasPrice);
             logger.info('Gas price nw;:', gasPrice.toString());
-
-            const gasEstimated = await bridge.estimateGas.setValidators(newValidators, newValidatorSetId, proof, {gasLimit: 5000000, gasPrice: increasedGasPrice});
+            const timeMs = 60000; // wait for a minute
+            logger.info(`Wait for a minute before sending the event proof`);
+            await sleep(timeMs);
             const eventExists = await bridge.eventIds(eventId.toString()); // check storage again, before sending event proof
             if (!eventExists) {
+                const gasEstimated = await bridge.estimateGas.setValidators(newValidators, newValidatorSetId, proof, {gasLimit: 5000000, gasPrice: increasedGasPrice});
                 const tx = await bridge.setValidators(newValidators, newValidatorSetId, proof, {
                     gasLimit: gasEstimated.add(BUFFER),
                     gasPrice: increasedGasPrice
@@ -113,8 +115,7 @@ async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, newValida
             logger.error(`IMP Error: ${e.stack}`);
             // send slack notification when proof submission fails
             const message = ` 🚨 Issue while submitting validator set on ethereum bridge 
-                    proof: ${JSON.stringify(proof)} 
-                    newValidators: ${newValidators}
+                    event proof id: ${eventProof.eventId} 
                     newValidatorSetId: ${newValidatorSetId}
                     on CENNZnets ${process.env.NETWORK} chain`;
             await sendSlackNotification(message);
@@ -215,6 +216,10 @@ async function withTimeout(promise, timeoutMs) {
             }, timeoutMs);
         }),
     ]);
+}
+
+function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 const networkName = process.env.NETWORK;
