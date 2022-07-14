@@ -7,6 +7,7 @@ const mongoose = require('mongoose');
 const { EventProcessed  } = require('../src/mongo/models');
 const ethers = require('ethers');
 const bridgeAbi = require("../abi/CENNZnetBridge.json").abi;
+const { FlashbotsBundleProvider, FlashbotsTransactionResolution} = require("@flashbots/ethers-provider-bundle");
 
 const timeoutMs = 20000;
 const BUFFER = 1000;
@@ -86,16 +87,34 @@ async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, newValida
             logger.info('percentGasPrice:',percentGasPrice.toString());
             const increasedGasPrice = gasPrice.add(percentGasPrice);
             logger.info('Gas price nw;:', gasPrice.toString());
-
-            const gasEstimated = await bridge.estimateGas.setValidators(newValidators, newValidatorSetId, proof, {gasLimit: 5000000, gasPrice: increasedGasPrice});
             const eventExists = await bridge.eventIds(eventId.toString()); // check storage again, before sending event proof
+            const gasEstimated = await bridge.estimateGas.setValidators(newValidators, newValidatorSetId, proof, {gasLimit: 5000000, gasPrice: increasedGasPrice});
             if (!eventExists) {
-                const tx = await bridge.setValidators(newValidators, newValidatorSetId, proof, {
+                const iface = new ethers.utils.Interface(bridgeAbi);
+                const data = iface.encodeFunctionData("setValidators", [newValidators, newValidatorSetId, proof]);
+                const flashbotsProvider = await FlashbotsBundleProvider.create(provider, txExecutor);
+                const transaction = {
+                    from: txExecutor.address,
+                    to: process.env.BRIDGE_CONTRACT,
+                    data: data,
+                    gasPrice: increasedGasPrice,
                     gasLimit: gasEstimated.add(BUFFER),
-                    gasPrice: increasedGasPrice
+                }
+                const res = await flashbotsProvider.sendPrivateTransaction({
+                    transaction,
+                    txExecutor,
+                }, {
+                    maxBlockNumber: (await provider.getBlockNumber()) + 15, // only allow tx to be mined for the next 15 blocks
                 });
-                await tx.wait(); // wait till tx is mined
-                logger.info(JSON.stringify(tx));
+
+                const waitRes = await res.wait();
+                if (waitRes === FlashbotsTransactionResolution.TransactionIncluded) {
+                    logger.info("Private transaction successfully mined.");
+                    logger.info(JSON.stringify(waitRes));
+                } else if (waitRes === FlashbotsTransactionResolution.TransactionDropped) {
+                    logger.info("Private transaction was not mined and has been removed from the system.");
+                    await sendSlackNotification(`Failed to submit transaction via flashbot`);
+                }
                 await updateLastEventProcessed(eventId, blockHash.toString());
                 const balance = await provider.getBalance(txExecutor.address);
                 logger.info(`IMP Balance is: ${balance}`);
@@ -113,8 +132,7 @@ async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, newValida
             logger.error(`IMP Error: ${e.stack}`);
             // send slack notification when proof submission fails
             const message = ` 🚨 Issue while submitting validator set on ethereum bridge 
-                    proof: ${JSON.stringify(proof)} 
-                    newValidators: ${newValidators}
+                    event proof id: ${eventProof.eventId} 
                     newValidatorSetId: ${newValidatorSetId}
                     on CENNZnets ${process.env.NETWORK} chain`;
             await sendSlackNotification(message);
