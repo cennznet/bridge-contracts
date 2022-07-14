@@ -10,7 +10,6 @@ const bridgeAbi = require("../abi/CENNZnetBridge.json").abi;
 const { FlashbotsBundleProvider, FlashbotsTransactionResolution} = require("@flashbots/ethers-provider-bundle");
 
 const timeoutMs = 20000;
-const BUFFER = 1000;
 // Ignore if validator public key is 0x000..
 const IGNORE_KEY = '0x000000000000000000000000000000000000000000000000000000000000000000';
 
@@ -87,8 +86,6 @@ async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, newValida
             logger.info('percentGasPrice:',percentGasPrice.toString());
             const increasedGasPrice = gasPrice.add(percentGasPrice);
             logger.info('Gas price nw;:', gasPrice.toString());
-            const timeMs = 60000; // wait for a minute
-            logger.info(`Wait for a minute before sending the event proof`);
             const eventExists = await bridge.eventIds(eventId.toString()); // check storage again, before sending event proof
             if (!eventExists) {
                 const iface = new ethers.utils.Interface(bridgeAbi);
