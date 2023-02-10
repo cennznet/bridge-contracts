@@ -220,7 +220,16 @@ async function main (networkName, bridgeContractAddress) {
         });
 }
 
-
+async function withTimeout(promise, timeoutMs) {
+    return Promise.race([
+        promise,
+        new Promise((resolve) => {
+            setTimeout(() => {
+                resolve(null);
+            }, timeoutMs);
+        }),
+    ]);
+}
 
 function delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
