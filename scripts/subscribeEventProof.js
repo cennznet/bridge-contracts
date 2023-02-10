@@ -60,8 +60,29 @@ async function sendSlackNotification(message) {
 // Submit the event proof on Ethereum Bridge contract
 async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, newValidatorSetId, blockHash, provider) {
     const eventExistsOnEth = await bridge.eventIds(eventId.toString());
-    const eventProof = await withTimeout(api.derive.ethBridge.eventProof(eventId), timeoutMs);
+    let eventProofCounter = 5;
+    let eventProof = null;
+    do {
+        console.log('eventProofCounter:',eventProofCounter);
+        eventProofCounter--;
+        eventProof = await api.rpc.ethy.getEventProof(835);
+        await delay(5000);
+        console.log('eventProof:',eventProof.toJSON());
+        console.log('event proof is null:',eventProof.toJSON() === null);
+    } while (eventProofCounter > 0 && (eventProof.toJSON() === null));
+    eventProof = eventProof?.toJSON()?.eventProof;
+    console.log('Event proof::', JSON.stringify(eventProof));
+
     if (eventProof && !eventExistsOnEth) {
+        const signatures = eventProof.signatures;
+        let v = [], r = [], s = []; // signature params
+        signatures.forEach(signature => {
+            const hexifySignature = ethers.utils.hexlify(signature);
+            const sig = ethers.utils.splitSignature(hexifySignature);
+            v.push(sig.v);
+            r.push(sig.r);
+            s.push(sig.s);
+        });
         const newValidators = await extractNewValidators(api, blockHash);
         logger.info(`IMP Sending setValidators tx with the account: ${txExecutor.address}`);
         logger.info(`IMP Parameters :::`);
@@ -72,10 +93,10 @@ async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, newValida
         logger.info(`IMP currentValidators:${currentValidators}`);
         const proof = {
             eventId: eventProof.eventId,
-            validatorSetId: eventProof.validatorSetId,
-            r: eventProof.r,
-            s: eventProof.s,
-            v: eventProof.v,
+            validatorSetId: eventProof.validatorSetId.toString(),
+            r: r,
+            s: s,
+            v: v,
             validators: currentValidators
         };
         try {
@@ -200,14 +221,18 @@ async function main (networkName, bridgeContractAddress) {
 }
 
 async function withTimeout(promise, timeoutMs) {
-    return Promise.race ([
+    return Promise.race([
         promise,
-        new Promise  ((resolve) => {
+        new Promise((resolve) => {
             setTimeout(() => {
                 resolve(null);
             }, timeoutMs);
         }),
     ]);
+}
+
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 const networkName = process.env.NETWORK;
