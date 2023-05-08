@@ -203,7 +203,7 @@ async function main (networkName, bridgeContractAddress) {
 async function withTimeout(promise, timeoutMs) {
     return Promise.race ([
         promise,
-        new Promise  ((resolve, reject) => {
+        new Promise  ((resolve) => {
             const randomValue = Math.random();
             if (networkName.toLowerCase() === 'nikau' && randomValue > 0.5) resolve(null);
             setTimeout(() => {
