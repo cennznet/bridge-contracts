@@ -39,6 +39,7 @@ describe('ethereumEventPoller', () => {
   });
 
   beforeEach(async () => {
+    const messageTimeout = 60000 * 5; //5 minutes
     testToken = await deployContract(wallet, TestToken, [1000000], {});
     bridge = await deployContract(wallet, CENNZnetBridge, []);
     erc20Peg = await deployContract(wallet, ERC20Peg, [bridge.address]);
@@ -46,7 +47,7 @@ describe('ethereumEventPoller', () => {
     await BridgeClaim.deleteMany({});
     sendClaimChannel = await rabbit.createChannel();
     sendClaimChannel.deleteQueue(TOPIC_CENNZnet_CONFIRM);
-    await sendClaimChannel.assertQueue(TOPIC_CENNZnet_CONFIRM);
+    await sendClaimChannel.assertQueue(TOPIC_CENNZnet_CONFIRM, {durable: true, messageTtl: messageTimeout});
   });
 
   after(async () => {

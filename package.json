@@ -4,7 +4,8 @@
   "description": "CENNZnet <> Eth Bridge",
   "main": "index.js",
   "scripts": {
-    "api": "nodemon src/api/index.js",
+    "api": "node src/api/index.js",
+    "api:dev": "nodemon src/api/index.js",
     "build": "rm -rf artifacts & hardhat compile",
     "build:abi": "yarn build && (mkdir abi || true) && cp artifacts/contracts/**/*.json abi/ && rm abi/*.dbg.json",
     "deploy": "hardhat run --network localhost scripts/deploy.js",
@@ -62,7 +63,7 @@
     "winston": "^3.2.1"
   },
   "devDependencies": {
-    "@cennznet/api": "2.1.0-rc.4",
+    "@cennznet/api": "2.1.1-alpha.2",
     "@nomiclabs/hardhat-ethers": "^2.0.2",
     "@nomiclabs/hardhat-etherscan": "^2.1.7",
     "@nomiclabs/hardhat-waffle": "^2.0.1",

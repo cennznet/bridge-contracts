@@ -212,14 +212,14 @@ async function mainPublisher(networkName, pegContractAddress, providerOverride= 
             logger.info(`HEALTH CHECK => OK`);
             logger.info(`At blocknumber: ${blockNumber}`);
     });
-
+    const messageTimeout = 60000 * 5; //5 minutes
     const peg = new ethers.Contract(pegContractAddress, pegAbi, provider);
     logger.info(`Connecting to CENNZnet peg contract ${pegContractAddress}...`);
     const eventConfirmations = (await api.query.ethBridge.eventConfirmations()).toNumber();
     let channel;
     if (channelOverride) channel = channelOverride;
     else channel = await rabbit.createChannel();
-    await channel.assertQueue(TOPIC_CENNZnet_CONFIRM);
+    await channel.assertQueue(TOPIC_CENNZnet_CONFIRM, {durable: true, messageTtl: messageTimeout});
     // On eth side deposit push pub sub queue with the data, if bridge is paused, update tx status as bridge paused
     peg.on("Deposit", async (sender, tokenAddress, amount, cennznetAddress, eventInfo) => {
         logger.info(`Got the event...${JSON.stringify(eventInfo)}`);

@@ -19,7 +19,8 @@ async function pollDepositEvents( networkName, interval, pegContractAddress, pro
     api = await Api.create({network: networkName});
     let rabbit = await amqp.connect(process.env.RABBIT_URL);
     let channel = await rabbit.createChannel();
-    await channel.assertQueue(TOPIC_CENNZnet_CONFIRM);
+    const messageTimeout = 60000 * 5; //5 minutes
+    await channel.assertQueue(TOPIC_CENNZnet_CONFIRM,{durable: true, messageTtl: messageTimeout});
     if (networkName === 'azalea') {
         provider = new ethers.providers.AlchemyProvider(process.env.ETH_NETWORK,
             process.env.AlCHEMY_API_KEY
@@ -74,7 +75,8 @@ async function pollWithdrawEvents( networkName, interval, pegContractAddress, br
     if(mongoose.connection.readyState !== 1) await mongoose.connect(connectionStr);
     let rabbit = await amqp.connect(process.env.RABBIT_URL);
     let channel = await rabbit.createChannel();
-    await channel.assertQueue(TOPIC_CENNZnet_CONFIRM);
+    const messageTimeout = 60000 * 5; //5 minutes
+    await channel.assertQueue(TOPIC_CENNZnet_CONFIRM,{durable: true, messageTtl: messageTimeout});
     if (networkName === 'azalea') {
         provider = new ethers.providers.AlchemyProvider(process.env.ETH_NETWORK,
             process.env.AlCHEMY_API_KEY

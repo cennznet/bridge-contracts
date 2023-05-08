@@ -8,7 +8,7 @@ const { EventProcessed  } = require('../src/mongo/models');
 const ethers = require('ethers');
 const bridgeAbi = require("../abi/CENNZnetBridge.json").abi;
 
-const timeoutMs = 20000;
+const timeoutMs = 40000;
 const BUFFER = 1000;
 // Ignore if validator public key is 0x000..
 const IGNORE_KEY = '0x000000000000000000000000000000000000000000000000000000000000000000';
@@ -60,61 +60,62 @@ async function sendSlackNotification(message) {
 // Submit the event proof on Ethereum Bridge contract
 async function getEventPoofAndSubmit(api, eventId, bridge, txExecutor, newValidatorSetId, blockHash, provider) {
     const eventExistsOnEth = await bridge.eventIds(eventId.toString());
+    if (eventExistsOnEth) return; // return if event proof already exist on Ethereum
     const eventProof = await withTimeout(api.derive.ethBridge.eventProof(eventId), timeoutMs);
-    if (eventProof && !eventExistsOnEth) {
-        const newValidators = await extractNewValidators(api, blockHash);
-        logger.info(`IMP Sending setValidators tx with the account: ${txExecutor.address}`);
-        logger.info(`IMP Parameters :::`);
-        logger.info(`IMP newValidators:${newValidators}`);
-        logger.info(`IMP newValidatorSetId: ${newValidatorSetId}`);
-        logger.info(`IMP event proof::${JSON.stringify(eventProof)}`);
-        const currentValidators = await extractCurrentValidators(api, blockHash);
-        logger.info(`IMP currentValidators:${currentValidators}`);
-        const proof = {
-            eventId: eventProof.eventId,
-            validatorSetId: eventProof.validatorSetId,
-            r: eventProof.r,
-            s: eventProof.s,
-            v: eventProof.v,
-            validators: currentValidators
-        };
-        try {
-            const gasPrice = await provider.getGasPrice();
-            logger.info('gas price::', gasPrice.toString());
-            // Take 5 percent of current gas price
-            const percentGasPrice = gasPrice.mul(5).div(100);
-            logger.info('percentGasPrice:',percentGasPrice.toString());
-            const increasedGasPrice = gasPrice.add(percentGasPrice);
-            logger.info('Gas price nw;:', gasPrice.toString());
-
-            const gasEstimated = await bridge.estimateGas.setValidators(newValidators, newValidatorSetId, proof, {gasLimit: 5000000, gasPrice: increasedGasPrice});
-
-            logger.info(JSON.stringify(await bridge.setValidators(newValidators, newValidatorSetId, proof, {gasLimit: gasEstimated.add(BUFFER), gasPrice: increasedGasPrice})));
-            await updateLastEventProcessed(eventId, blockHash.toString());
-            const balance = await provider.getBalance(txExecutor.address);
-            logger.info(`IMP Balance is: ${balance}`);
-
-            logger.info(`IMP Gas price: ${gasPrice.toString()}`);
-            const gasRequired = gasEstimated.mul(gasPrice);
-            logger.info(`IMP Gas required: ${gasRequired.toString()}`);
-            if (balance.lt(gasRequired.mul(2))) {
-                const message = ` 🚨 To keep the validator relayer running, topup the eth account ${txExecutor.address} on CENNZnets ${process.env.NETWORK} chain`;
-                await sendSlackNotification(message);
-            }
-        } catch (e) {
-            logger.warn('Something went wrong:');
-            logger.error(`IMP Error: ${e.stack}`);
-            // send slack notification when proof submission fails
-            const message = ` 🚨 Issue while submitting validator set on ethereum bridge 
-                    proof: ${JSON.stringify(proof)} 
-                    newValidators: ${newValidators}
-                    newValidatorSetId: ${newValidatorSetId}
-                    on CENNZnets ${process.env.NETWORK} chain`;
-            await sendSlackNotification(message);
-        }
-    } else if (!eventProof){
+    if (!eventProof) {
         logger.info(`IMP Could not retrieve event proof for event id ${eventId} from derived
         query api.derive.ethBridge.eventProof at ${timeoutMs} timeout`);
+        process.exit(1);
+    }
+    const newValidators = await extractNewValidators(api, blockHash);
+    logger.info(`IMP Sending setValidators tx with the account: ${txExecutor.address}`);
+    logger.info(`IMP Parameters :::`);
+    logger.info(`IMP newValidators:${newValidators}`);
+    logger.info(`IMP newValidatorSetId: ${newValidatorSetId}`);
+    logger.info(`IMP event proof::${JSON.stringify(eventProof)}`);
+    const currentValidators = await extractCurrentValidators(api, blockHash);
+    logger.info(`IMP currentValidators:${currentValidators}`);
+    const proof = {
+        eventId: eventProof.eventId,
+        validatorSetId: eventProof.validatorSetId,
+        r: eventProof.r,
+        s: eventProof.s,
+        v: eventProof.v,
+        validators: currentValidators
+    };
+    try {
+        const gasPrice = await provider.getGasPrice();
+        logger.info('gas price::', gasPrice.toString());
+        // Take 5 percent of current gas price
+        const percentGasPrice = gasPrice.mul(5).div(100);
+        logger.info('percentGasPrice:',percentGasPrice.toString());
+        const increasedGasPrice = gasPrice.add(percentGasPrice);
+        logger.info('Gas price nw;:', gasPrice.toString());
+
+        const gasEstimated = await bridge.estimateGas.setValidators(newValidators, newValidatorSetId, proof, {gasLimit: 5000000, gasPrice: increasedGasPrice});
+
+        logger.info(JSON.stringify(await bridge.setValidators(newValidators, newValidatorSetId, proof, {gasLimit: gasEstimated.add(BUFFER), gasPrice: increasedGasPrice})));
+        await updateLastEventProcessed(eventId, blockHash.toString());
+        const balance = await provider.getBalance(txExecutor.address);
+        logger.info(`IMP Balance is: ${balance}`);
+
+        logger.info(`IMP Gas price: ${gasPrice.toString()}`);
+        const gasRequired = gasEstimated.mul(gasPrice);
+        logger.info(`IMP Gas required: ${gasRequired.toString()}`);
+        if (balance.lt(gasRequired.mul(2))) {
+            const message = ` 🚨 To keep the validator relayer running, topup the eth account ${txExecutor.address} on CENNZnets ${process.env.NETWORK} chain`;
+            await sendSlackNotification(message);
+        }
+    } catch (e) {
+        logger.warn('Something went wrong:');
+        logger.error(`IMP Error: ${e.stack}`);
+        // send slack notification when proof submission fails
+        const message = ` 🚨 Issue while submitting validator set on ethereum bridge 
+                   proof: ${JSON.stringify(proof)} 
+                   newValidators: ${newValidators}
+                   newValidatorSetId: ${newValidatorSetId}
+                   on CENNZnets ${process.env.NETWORK} chain`;
+        await sendSlackNotification(message);
     }
 }
 
@@ -203,6 +204,8 @@ async function withTimeout(promise, timeoutMs) {
     return Promise.race ([
         promise,
         new Promise  ((resolve) => {
+            const randomValue = Math.random();
+            if (networkName.toLowerCase() === 'nikau' && randomValue > 0.5) resolve(null);
             setTimeout(() => {
                 resolve(null);
             }, timeoutMs);
